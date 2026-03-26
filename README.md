@@ -1,4 +1,4 @@
-# AMS2 Setup Advisor
+# AMS2 Setup Assistant
 
 A real-time setup advisor overlay for **Automobilista 2**. Reads telemetry from the CREST2 shared memory server, detects handling symptoms as you drive, and surfaces prioritised setup change suggestions in an always-on-top overlay — no internet connection or AI required.
 
