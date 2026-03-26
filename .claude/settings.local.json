@@ -5,7 +5,14 @@
       "WebSearch",
       "WebFetch(domain:steamcommunity.com)",
       "Bash(python3 -c \":*)",
-      "Bash(python -m pytest tests/test_symptom_detector.py::test_oversteer_exit_detected -v)"
+      "Bash(python -m pytest tests/test_symptom_detector.py::test_oversteer_exit_detected -v)",
+      "WebFetch(domain:automobilista2.wiki.gg)",
+      "Bash(grep -E \"\\\\.\\(py|json|md\\)$\")",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:automobilista-2.fandom.com)",
+      "WebFetch(domain:simracingcockpit.gg)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

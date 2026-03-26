@@ -53,9 +53,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="alignment",
         ),
         SuggestionEntry(
-            title="Soften front bump damping",
-            detail="Reduce front bump damping 2–3 clicks. A stiff bump setting resists tyre "
-                   "compliance over surface irregularities at turn-in, reducing mechanical grip.",
+            title="Soften front slow bump",
+            detail="Reduce front slow bump 2–3 clicks. Slow bump controls compression during "
+                   "braking and turning; a stiff setting resists tyre compliance at turn-in, "
+                   "reducing mechanical grip over surface irregularities.",
             priority=3,
             category="suspension",
         ),
@@ -87,9 +88,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
     # -----------------------------------------------------------------------
     SymptomType.UNDERSTEER_EXIT: [
         SuggestionEntry(
-            title="Reduce differential power lock",
-            detail="Lower the power-side ramp angle on the differential. A locked diff on exit "
-                   "pulls the car straight, preventing it from tracking around the corner.",
+            title="Increase clutch LSD power ramp",
+            detail="Raise the on-power ramp setting. In AMS2, a higher power ramp value increases "
+                   "the locking effect under throttle, helping the car track through the corner "
+                   "exit instead of pushing wide. Increase in small steps and re-test.",
             priority=1,
             category="differential",
         ),
@@ -133,9 +135,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="alignment",
         ),
         SuggestionEntry(
-            title="Soften rear rebound damping",
-            detail="Reduce rear rebound 2–3 clicks. If the rear is slow to recover from a "
-                   "compression event, it can unsettle under trail-braking.",
+            title="Soften rear slow rebound",
+            detail="Reduce rear slow rebound 2–3 clicks. Slow rebound controls decompression "
+                   "during braking and turning; if the rear recovers too slowly from compression "
+                   "under trail-braking it stays jacked up and can snap loose at entry.",
             priority=3,
             category="suspension",
         ),
@@ -154,6 +157,15 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="aero",
             condition="High-speed corners",
         ),
+        SuggestionEntry(
+            title="Increase engine braking",
+            detail="A low engine braking value produces an abrupt power cut on lift-off that "
+                   "unsettles the rear. Raise it to smooth the deceleration rate and stabilise "
+                   "the car during trail-braking. Note: AMS2 has a bug where values above 5 "
+                   "can blow the engine on some cars — keep it at 5 maximum.",
+            priority=6,
+            category="differential",
+        ),
     ],
 
     # -----------------------------------------------------------------------
@@ -166,9 +178,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="suspension",
         ),
         SuggestionEntry(
-            title="Reduce differential power ramp angle",
-            detail="Lower the power-side differential ramp angle. An aggressive diff slams load "
-                   "across the rear axle too abruptly, rotating the car on throttle.",
+            title="Reduce clutch LSD power ramp",
+            detail="Lower the on-power ramp setting. In AMS2, a higher power ramp value increases "
+                   "the locking effect and oversteer tendency on exit — reducing it allows the rear "
+                   "wheels to differentiate more freely under throttle, taming snap oversteer.",
             priority=2,
             category="differential",
         ),
@@ -206,23 +219,27 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="suspension",
         ),
         SuggestionEntry(
-            title="Reduce differential preload",
-            detail="Lower differential preload torque. High preload locks the rear diff too "
-                   "early and causes one rear to spin under low-speed traction.",
+            title="Reduce clutch LSD preload",
+            detail="Lower clutch LSD preload torque. In slow corners, high preload forces both "
+                   "rear wheels to spin at equal speed; the geometry requires the outer wheel to "
+                   "travel faster, so the diff fights the corner and scrubs traction from the "
+                   "inside rear. Less preload lets the wheels differentiate naturally.",
             priority=2,
             category="differential",
         ),
         SuggestionEntry(
-            title="Soften rear bump damping",
-            detail="Reduce rear bump damping 2 clicks. Better tyre compliance on surface "
-                   "undulations maintains contact patch and traction.",
+            title="Soften rear slow bump",
+            detail="Reduce rear slow bump 2 clicks. Slow bump controls compression under "
+                   "acceleration; better tyre compliance on surface undulations maintains "
+                   "the rear contact patch and traction.",
             priority=3,
             category="suspension",
         ),
         SuggestionEntry(
             title="Increase rear ride height slightly",
             detail="More rear ride height increases rear roll stiffness geometrically and "
-                   "can help plant the rear on corner exit.",
+                   "can help plant the rear on corner exit. In AMS2 the rear underfloor has a "
+                   "sweet spot range for downforce — adjust in small increments to stay within it.",
             priority=4,
             category="suspension",
         ),
@@ -245,24 +262,25 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="brakes",
         ),
         SuggestionEntry(
-            title="Check brake duct settings",
-            detail="Asymmetric brake temperatures suggest unequal cooling. Check that brake duct "
-                   "settings are equal left and right, or open the hotter side's duct.",
+            title="Check front/rear duct opening settings",
+            detail="Asymmetric brake temperatures suggest unequal cooling. Check that front and "
+                   "rear duct opening settings are equal left and right, or open the hotter side.",
             priority=2,
             category="brakes",
         ),
         SuggestionEntry(
-            title="Increase front brake duct opening",
-            detail="If front brakes are running very hot (>500 °C), open front brake ducts to "
-                   "prevent fade. Fading brakes produce inconsistent lock-up behaviour.",
+            title="Increase front duct opening",
+            detail="If front brakes are running very hot (>500 °C), increase the front duct "
+                   "opening to prevent fade. Fading brakes produce inconsistent lock-up behaviour.",
             priority=3,
             category="brakes",
             condition="If front brake temps are high",
         ),
         SuggestionEntry(
-            title="Stiffen front rebound damping",
-            detail="Increase front rebound 2 clicks. Under heavy braking, the nose dives and "
-                   "rebounds — a controlled rebound keeps the geometry stable.",
+            title="Stiffen front slow rebound",
+            detail="Increase front slow rebound 2 clicks. Slow rebound controls decompression "
+                   "during braking; a controlled recovery after nose dive keeps the geometry "
+                   "stable and prevents the front from snapping back mid-corner.",
             priority=4,
             category="suspension",
         ),
@@ -271,16 +289,18 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
     # -----------------------------------------------------------------------
     SymptomType.TYRE_OVERHEATING: [
         SuggestionEntry(
-            title="Open tyre cooling ducts",
-            detail="Increase brake / tyre duct opening to improve airflow to the overheating "
-                   "corners. Sustained over-temperature degrades rubber and causes graining.",
+            title="Increase duct opening on hot axle",
+            detail="Increase the front or rear duct opening (whichever axle is overheating) to "
+                   "improve airflow. Sustained over-temperature degrades rubber and causes graining.",
             priority=1,
             category="tyres",
         ),
         SuggestionEntry(
             title="Reduce camber on affected axle",
             detail="Excess negative camber concentrates load on the inner edge, generating "
-                   "more heat than the tyre can dissipate. Reduce by 0.2–0.3°.",
+                   "more heat than the tyre can dissipate. Reduce by 0.2–0.3°. In AMS2, "
+                   "target inner edge ~7°C hotter than outer (front) or ~3–5°C (rear); "
+                   "if the inner is much hotter, camber is the first adjustment.",
             priority=2,
             category="alignment",
         ),
@@ -313,7 +333,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Increase camber on cold axle",
             detail="More negative camber loads the inner edge more aggressively, generating "
-                   "heat faster. Increase by 0.2–0.3° on the undertemperature wheels.",
+                   "heat faster. Increase by 0.2–0.3° on the undertemperature wheels. In AMS2 "
+                   "target inner edge ~7°C hotter than outer (front) or ~3–5°C (rear) — if the "
+                   "spread is smaller than that, more camber will help reach temperature.",
             priority=2,
             category="alignment",
         ),
@@ -339,7 +361,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Increase ride height on bottoming corners",
             detail="Raise the affected corner's ride height by 2–5 mm. Bottoming causes "
-                   "sudden grip loss and can damage floor or diffuser components.",
+                   "sudden grip loss and can damage floor or diffuser components. In AMS2 the "
+                   "rear underfloor has a downforce sweet spot — raise cautiously and check "
+                   "balance after each change.",
             priority=1,
             category="suspension",
         ),
@@ -351,16 +375,17 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="suspension",
         ),
         SuggestionEntry(
-            title="Increase bump damping",
-            detail="Raise bump damping 2–3 clicks to slow the initial compression rate "
-                   "over kerbs or compressions, giving the spring time to react.",
+            title="Increase fast bump on bottoming axle",
+            detail="Raise fast bump 2–3 clicks. Fast bump resists rapid compression over kerbs "
+                   "and sudden compressions, slowing the initial travel rate and giving the spring "
+                   "time to react. Use slow bump instead if bottoming occurs on gradual undulations.",
             priority=3,
             category="suspension",
         ),
         SuggestionEntry(
-            title="Check bump stop gap",
-            detail="If bump stops are accessible in setup, increase the gap or use a softer "
-                   "bump stop to prevent abrupt contact with the chassis.",
+            title="Adjust bumpstop gap",
+            detail="Increase the bumpstop gap to delay when the bumpstop engages, or fit a "
+                   "softer bumpstop to prevent the abrupt chassis contact that causes sudden grip loss.",
             priority=4,
             category="suspension",
         ),
@@ -384,9 +409,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="brakes",
         ),
         SuggestionEntry(
-            title="Open brake ducts on locking axle",
-            detail="If brakes are overheating they fade and then bite unpredictably, "
-                   "causing lock-up. Opening ducts keeps discs in their working range.",
+            title="Increase duct opening on locking axle",
+            detail="If brakes are overheating they fade and then bite unpredictably, causing "
+                   "lock-up. Increase the front or rear duct opening to keep discs in their "
+                   "working range.",
             priority=3,
             category="brakes",
             condition="If brake temps are high on locking wheels",
@@ -403,9 +429,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
     # -----------------------------------------------------------------------
     SymptomType.ABS_INSUFFICIENT: [
         SuggestionEntry(
-            title="Increase ABS setting",
-            detail="ABS is active but wheels are still locking. Increase the ABS setting "
-                   "by 1–2 steps so the system intervenes earlier before full lock occurs.",
+            title="Increase anti-lock brakes setting",
+            detail="ABS is active but wheels are still locking. Increase the anti-lock brakes "
+                   "setting by 1–2 steps so the system intervenes earlier before full lock occurs.",
             priority=1,
             category="brakes",
         ),
@@ -420,7 +446,8 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Check brake temperatures",
             detail="Overheated brakes fade and then bite unevenly, overwhelming ABS. "
-                   "Open brake ducts on the locking axle to keep temps in range.",
+                   "Increase the front or rear duct opening on the locking axle to keep "
+                   "brake temps in range.",
             priority=3,
             category="brakes",
         ),
@@ -429,10 +456,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
     # -----------------------------------------------------------------------
     SymptomType.ABS_OVER_INTERVENTION: [
         SuggestionEntry(
-            title="Reduce ABS setting",
+            title="Reduce anti-lock brakes setting",
             detail="ABS is cutting in at moderate brake pressure on a straight, suggesting "
-                   "it is set too aggressively. Reduce by 1–2 steps for better trail-braking "
-                   "feel and less brake force loss.",
+                   "it is set too aggressively. Reduce the anti-lock brakes setting by 1–2 "
+                   "steps for better trail-braking feel and less brake force loss.",
             priority=1,
             category="brakes",
         ),
