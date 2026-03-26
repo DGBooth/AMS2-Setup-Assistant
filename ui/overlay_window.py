@@ -1,0 +1,243 @@
+"""
+Main overlay window.
+
+Transparent, frameless, always-on-top window that hosts the symptom and
+suggestion panels.  Draggable by clicking the header bar.  Position and
+opacity are persisted via QSettings.
+"""
+
+from __future__ import annotations
+import os
+
+from PyQt5.QtCore import Qt, QPoint, QSettings, pyqtSlot
+from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtWidgets import (
+    QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow,
+    QPushButton, QSizePolicy, QStyle, QVBoxLayout, QWidget,
+)
+
+from config import (
+    COLOR_ACCENT, OVERLAY_DEFAULT_X, OVERLAY_DEFAULT_Y,
+    OVERLAY_HEIGHT, OVERLAY_OPACITY, OVERLAY_WIDTH,
+)
+from data_layer.data_models import TelemetrySnapshot
+from analysis.symptom_detector import Symptom
+from analysis.suggestion_table import SuggestionEntry
+from ui.symptom_panel import SymptomPanel
+from ui.suggestion_panel import SuggestionPanel
+
+
+def _load_stylesheet() -> str:
+    qss_path = os.path.join(os.path.dirname(__file__), "..", "assets", "style.qss")
+    try:
+        with open(qss_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+
+class OverlayWindow(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+        self._drag_pos: QPoint | None = None
+        self._settings = QSettings("AMS2SetupAdvisor", "Overlay")
+        self._minimised = False
+
+        self._init_window()
+        self._build_ui()
+        self._restore_geometry()
+
+        self.setStyleSheet(_load_stylesheet())
+
+    # ------------------------------------------------------------------
+    # Window setup
+    # ------------------------------------------------------------------
+
+    def _init_window(self):
+        self.setWindowFlags(
+            Qt.WindowStaysOnTopHint
+            | Qt.FramelessWindowHint
+            | Qt.Tool               # no taskbar entry
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowOpacity(
+            float(self._settings.value("opacity", OVERLAY_OPACITY))
+        )
+        self.setFixedWidth(OVERLAY_WIDTH)
+        self.setMaximumHeight(OVERLAY_HEIGHT)
+
+    def _build_ui(self):
+        central = QWidget()
+        central.setObjectName("overlayFrame")
+        self.setCentralWidget(central)
+
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 6)
+        root_layout.setSpacing(0)
+
+        # Header bar
+        header = self._build_header()
+        self._header_widget = header
+        root_layout.addWidget(header)
+
+        # Content area
+        self._content_widget = QWidget()
+        content_layout = QVBoxLayout(self._content_widget)
+        content_layout.setContentsMargins(0, 4, 0, 0)
+        content_layout.setSpacing(0)
+
+        self._symptom_panel = SymptomPanel()
+        self._suggestion_panel = SuggestionPanel()
+
+        content_layout.addWidget(self._symptom_panel)
+        content_layout.addWidget(self._suggestion_panel)
+
+        root_layout.addWidget(self._content_widget)
+
+        # Connect symptom selection → suggestion update
+        self._symptom_panel.symptom_selected.connect(self._on_symptom_selected)
+
+    def _build_header(self) -> QWidget:
+        bar = QFrame()
+        bar.setObjectName("headerBar")
+        bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(6)
+
+        self._conn_label = QLabel("●")
+        self._conn_label.setObjectName("disconnectedDot")
+        self._conn_label.setFixedWidth(12)
+
+        title = QLabel("AMS2 Setup Advisor")
+        title.setObjectName("titleLabel")
+
+        layout.addWidget(self._conn_label)
+        layout.addWidget(title)
+        layout.addStretch()
+
+        self._car_label = QLabel("")
+        self._car_label.setObjectName("statusLabel")
+        layout.addWidget(self._car_label)
+
+        def _icon_btn(standard_pixmap: QStyle.StandardPixmap, tooltip: str) -> QPushButton:
+            btn = QPushButton()
+            btn.setIcon(self.style().standardIcon(standard_pixmap))
+            btn.setFixedSize(22, 22)
+            btn.setToolTip(tooltip)
+            return btn
+
+        settings_btn = _icon_btn(QStyle.SP_FileDialogDetailedView, "Settings")
+        settings_btn.clicked.connect(self._open_settings)
+        layout.addWidget(settings_btn)
+
+        minimise_btn = _icon_btn(QStyle.SP_TitleBarMinButton, "Minimise")
+        minimise_btn.clicked.connect(self._toggle_minimise)
+        layout.addWidget(minimise_btn)
+
+        close_btn = _icon_btn(QStyle.SP_TitleBarCloseButton, "Close")
+        close_btn.clicked.connect(QApplication.quit)
+        layout.addWidget(close_btn)
+
+        return bar
+
+    # ------------------------------------------------------------------
+    # Public update API (called from main loop)
+    # ------------------------------------------------------------------
+
+    @pyqtSlot(object)
+    def update_snapshot(self, snapshot: TelemetrySnapshot):
+        """Receive raw snapshot to update connection status / car label."""
+        connected = snapshot.game_running
+        self._conn_label.setObjectName("connectedDot" if connected else "disconnectedDot")
+        self._conn_label.setStyleSheet(
+            "color: #44ff88;" if connected else "color: #ff4444;"
+        )
+        if snapshot.vehicle_info.mCarName:
+            self._car_label.setText(snapshot.vehicle_info.mCarName)
+
+    @pyqtSlot(list)
+    def update_symptoms(self, symptoms: list[Symptom]):
+        self._symptom_panel.update_symptoms(symptoms)
+
+    @pyqtSlot(object, list)
+    def show_suggestions(self, symptom: Symptom, suggestions: list[SuggestionEntry]):
+        self._suggestion_panel.show_suggestions(symptom, suggestions)
+
+    # ------------------------------------------------------------------
+    # Dragging
+    # ------------------------------------------------------------------
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self._drag_pos is not None:
+            self.move(event.globalPos() - self._drag_pos)
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+        self._save_geometry()
+
+    # ------------------------------------------------------------------
+    # Minimise toggle
+    # ------------------------------------------------------------------
+
+    def _toggle_minimise(self):
+        self._minimised = not self._minimised
+        self._content_widget.setVisible(not self._minimised)
+        if self._minimised:
+            # Pin height to just the header — adjustSize() is unreliable on QMainWindow
+            self.setFixedHeight(self._header_widget.sizeHint().height())
+        else:
+            self.setMinimumHeight(0)
+            self.setMaximumHeight(OVERLAY_HEIGHT)
+            self.adjustSize()
+
+    # ------------------------------------------------------------------
+    # Settings
+    # ------------------------------------------------------------------
+
+    def _open_settings(self):
+        from ui.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self, current_opacity=self.windowOpacity())
+        dlg.opacity_changed.connect(self.setWindowOpacity)
+        dlg.exec_()
+
+    # ------------------------------------------------------------------
+    # Geometry persistence
+    # ------------------------------------------------------------------
+
+    def _save_geometry(self):
+        self._settings.setValue("x", self.x())
+        self._settings.setValue("y", self.y())
+
+    def _restore_geometry(self):
+        x = int(self._settings.value("x", OVERLAY_DEFAULT_X))
+        y = int(self._settings.value("y", OVERLAY_DEFAULT_Y))
+        # Clamp to screen bounds
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = max(0, min(x, screen.width()  - OVERLAY_WIDTH))
+        y = max(0, min(y, screen.height() - 60))
+        self.move(x, y)
+
+    # ------------------------------------------------------------------
+    # Slots
+    # ------------------------------------------------------------------
+
+    @pyqtSlot(object)
+    def _on_symptom_selected(self, symptom: Symptom):
+        from analysis.suggestion_table import get_suggestions
+        from config import MAX_SUGGESTIONS_SHOWN
+        suggestions = get_suggestions(symptom, MAX_SUGGESTIONS_SHOWN)
+        self._suggestion_panel.show_suggestions(symptom, suggestions)
+
+    # ------------------------------------------------------------------
+    # Paint translucent background
+    # ------------------------------------------------------------------
+
+    def paintEvent(self, event):
+        # Background is handled by the central widget's QSS; nothing extra needed.
+        super().paintEvent(event)

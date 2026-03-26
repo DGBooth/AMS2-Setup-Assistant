@@ -1,0 +1,233 @@
+/* AMS2 Setup Advisor — dark translucent overlay stylesheet */
+
+/* Base widget */
+QWidget {
+    background: transparent;
+    color: #e8e8e8;
+    font-family: "Segoe UI", "Arial", sans-serif;
+    font-size: 12px;
+}
+
+/* Main overlay frame */
+#overlayFrame {
+    background: rgba(12, 12, 18, 210);
+    border: 1px solid rgba(45, 106, 159, 120);
+    border-radius: 8px;
+}
+
+/* Header bar */
+#headerBar {
+    background: rgba(20, 20, 35, 230);
+    border-radius: 8px 8px 0 0;
+    padding: 4px 8px;
+}
+
+#titleLabel {
+    color: #44aaff;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+#statusLabel {
+    color: #888888;
+    font-size: 10px;
+}
+
+/* Section headers */
+#sectionHeader {
+    color: #888888;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 8px 2px 8px;
+}
+
+/* Symptom item */
+#symptomItem {
+    background: rgba(30, 30, 45, 160);
+    border-left: 3px solid #888888;
+    border-radius: 3px;
+    padding: 4px 8px;
+    margin: 2px 4px;
+}
+
+#symptomItem[severity="high"] {
+    border-left-color: #ff4444;
+}
+
+#symptomItem[severity="medium"] {
+    border-left-color: #ffaa00;
+}
+
+#symptomItem[severity="low"] {
+    border-left-color: #44aaff;
+}
+
+#symptomLabel {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#symptomContext {
+    color: #888888;
+    font-size: 10px;
+}
+
+/* Suggestion item */
+#suggestionItem {
+    background: rgba(25, 35, 50, 160);
+    border: 1px solid rgba(45, 106, 159, 80);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 2px 4px;
+}
+
+#suggestionTitle {
+    font-size: 12px;
+    font-weight: bold;
+    color: #e8e8e8;
+}
+
+#suggestionDetail {
+    color: #aaaaaa;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+#suggestionCategory {
+    background: rgba(45, 106, 159, 120);
+    color: #44aaff;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 1px 4px;
+}
+
+#suggestionCondition {
+    color: #ffaa00;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* Divider */
+#divider {
+    background: rgba(80, 80, 100, 80);
+    max-height: 1px;
+    margin: 4px 8px;
+}
+
+/* Connection status indicator */
+#connectedDot {
+    color: #44ff88;
+    font-size: 10px;
+}
+
+#disconnectedDot {
+    color: #ff4444;
+    font-size: 10px;
+}
+
+/* Scrollbar — minimal, dark */
+QScrollBar:vertical {
+    background: rgba(20, 20, 30, 100);
+    width: 6px;
+    border-radius: 3px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(80, 120, 160, 150);
+    border-radius: 3px;
+    min-height: 20px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+/* Buttons */
+QPushButton {
+    background: rgba(45, 106, 159, 150);
+    color: #e8e8e8;
+    border: 1px solid rgba(45, 106, 159, 200);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+}
+
+QPushButton:hover {
+    background: rgba(60, 130, 190, 200);
+}
+
+QPushButton:pressed {
+    background: rgba(30, 80, 130, 200);
+}
+
+QPushButton#aiButton {
+    background: rgba(80, 50, 130, 150);
+    border-color: rgba(120, 80, 200, 200);
+    color: #cc99ff;
+}
+
+QPushButton#aiButton:hover {
+    background: rgba(100, 70, 160, 200);
+}
+
+/* Settings dialog */
+QDialog {
+    background: rgba(18, 18, 28, 255);
+    border: 1px solid rgba(45, 106, 159, 150);
+    border-radius: 8px;
+}
+
+QLabel {
+    color: #cccccc;
+}
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QSlider {
+    background: rgba(30, 30, 50, 200);
+    border: 1px solid rgba(60, 80, 110, 150);
+    border-radius: 3px;
+    color: #e8e8e8;
+    padding: 3px 6px;
+    selection-background-color: rgba(45, 106, 159, 200);
+}
+
+QSlider::groove:horizontal {
+    background: rgba(40, 40, 60, 200);
+    height: 4px;
+    border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+    background: #44aaff;
+    width: 12px;
+    height: 12px;
+    margin: -4px 0;
+    border-radius: 6px;
+}
+
+QSlider::sub-page:horizontal {
+    background: rgba(45, 106, 159, 180);
+    border-radius: 2px;
+}
+
+QCheckBox {
+    color: #cccccc;
+    spacing: 6px;
+}
+
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(60, 80, 110, 200);
+    border-radius: 3px;
+    background: rgba(30, 30, 50, 200);
+}
+
+QCheckBox::indicator:checked {
+    background: rgba(45, 106, 159, 220);
+    border-color: #44aaff;
+}

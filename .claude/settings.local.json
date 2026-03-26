@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:steamcommunity.com)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -m pytest tests/test_symptom_detector.py::test_oversteer_exit_detected -v)"
+    ]
+  }
+}
