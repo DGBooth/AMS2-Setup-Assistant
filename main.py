@@ -69,7 +69,7 @@ class App(QObject):
 
         # Run / lap state
         self._run_started: bool = False          # True once car crosses start line
-        self._stationary_samples: int = _GARAGE_STATIONARY_SAMPLES  # start as "in garage"
+        self._stationary_samples: int = self._GARAGE_STATIONARY_SAMPLES  # start as "in garage"
         self._persisted_symptoms: dict[SymptomType, Symptom] = {}
 
         self._client = CRESTClient()
