@@ -88,9 +88,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
     # -----------------------------------------------------------------------
     SymptomType.UNDERSTEER_EXIT: [
         SuggestionEntry(
-            title="Reduce clutch LSD power ramp",
-            detail="Lower the clutch LSD power ramp angle. A locked diff on exit pulls the car "
-                   "straight, preventing it from tracking around the corner.",
+            title="Increase clutch LSD power ramp",
+            detail="Raise the on-power ramp setting. In AMS2, a higher power ramp value increases "
+                   "the locking effect under throttle, helping the car track through the corner "
+                   "exit instead of pushing wide. Increase in small steps and re-test.",
             priority=1,
             category="differential",
         ),
@@ -156,6 +157,15 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="aero",
             condition="High-speed corners",
         ),
+        SuggestionEntry(
+            title="Increase engine braking",
+            detail="A low engine braking value produces an abrupt power cut on lift-off that "
+                   "unsettles the rear. Raise it to smooth the deceleration rate and stabilise "
+                   "the car during trail-braking. Note: AMS2 has a bug where values above 5 "
+                   "can blow the engine on some cars — keep it at 5 maximum.",
+            priority=6,
+            category="differential",
+        ),
     ],
 
     # -----------------------------------------------------------------------
@@ -169,8 +179,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         ),
         SuggestionEntry(
             title="Reduce clutch LSD power ramp",
-            detail="Lower the clutch LSD power ramp angle. An aggressive ramp slams load across "
-                   "the rear axle too abruptly on throttle application, rotating the car.",
+            detail="Lower the on-power ramp setting. In AMS2, a higher power ramp value increases "
+                   "the locking effect and oversteer tendency on exit — reducing it allows the rear "
+                   "wheels to differentiate more freely under throttle, taming snap oversteer.",
             priority=2,
             category="differential",
         ),
@@ -209,8 +220,10 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         ),
         SuggestionEntry(
             title="Reduce clutch LSD preload",
-            detail="Lower clutch LSD preload torque. High preload locks the rear diff too "
-                   "early and causes one rear to spin under low-speed traction.",
+            detail="Lower clutch LSD preload torque. In slow corners, high preload forces both "
+                   "rear wheels to spin at equal speed; the geometry requires the outer wheel to "
+                   "travel faster, so the diff fights the corner and scrubs traction from the "
+                   "inside rear. Less preload lets the wheels differentiate naturally.",
             priority=2,
             category="differential",
         ),
@@ -225,7 +238,8 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Increase rear ride height slightly",
             detail="More rear ride height increases rear roll stiffness geometrically and "
-                   "can help plant the rear on corner exit.",
+                   "can help plant the rear on corner exit. In AMS2 the rear underfloor has a "
+                   "sweet spot range for downforce — adjust in small increments to stay within it.",
             priority=4,
             category="suspension",
         ),
@@ -284,7 +298,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Reduce camber on affected axle",
             detail="Excess negative camber concentrates load on the inner edge, generating "
-                   "more heat than the tyre can dissipate. Reduce by 0.2–0.3°.",
+                   "more heat than the tyre can dissipate. Reduce by 0.2–0.3°. In AMS2, "
+                   "target inner edge ~7°C hotter than outer (front) or ~3–5°C (rear); "
+                   "if the inner is much hotter, camber is the first adjustment.",
             priority=2,
             category="alignment",
         ),
@@ -317,7 +333,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Increase camber on cold axle",
             detail="More negative camber loads the inner edge more aggressively, generating "
-                   "heat faster. Increase by 0.2–0.3° on the undertemperature wheels.",
+                   "heat faster. Increase by 0.2–0.3° on the undertemperature wheels. In AMS2 "
+                   "target inner edge ~7°C hotter than outer (front) or ~3–5°C (rear) — if the "
+                   "spread is smaller than that, more camber will help reach temperature.",
             priority=2,
             category="alignment",
         ),
@@ -343,7 +361,9 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
         SuggestionEntry(
             title="Increase ride height on bottoming corners",
             detail="Raise the affected corner's ride height by 2–5 mm. Bottoming causes "
-                   "sudden grip loss and can damage floor or diffuser components.",
+                   "sudden grip loss and can damage floor or diffuser components. In AMS2 the "
+                   "rear underfloor has a downforce sweet spot — raise cautiously and check "
+                   "balance after each change.",
             priority=1,
             category="suspension",
         ),
