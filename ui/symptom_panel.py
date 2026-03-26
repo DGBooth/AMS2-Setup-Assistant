@@ -93,6 +93,7 @@ class SymptomPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_symptoms: list[Symptom] = []
+        self._selected_type: SymptomType | None = None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -148,14 +149,28 @@ class SymptomPanel(QWidget):
 
         for symptom in symptoms:
             item = _SymptomItem(symptom)
-            item.clicked.connect(self.symptom_selected)
+            item.clicked.connect(self._on_item_clicked)
             self._list_layout.insertWidget(self._list_layout.count() - 1, item)
 
-        # Auto-select highest severity symptom
-        if symptoms:
-            priority_order = [Severity.HIGH, Severity.MEDIUM, Severity.LOW]
-            for sev in priority_order:
-                matching = [s for s in symptoms if s.severity == sev]
-                if matching:
-                    self.symptom_selected.emit(matching[0])
-                    break
+        if not symptoms:
+            return
+
+        # If the previously selected symptom is still present, keep that selection.
+        if self._selected_type is not None:
+            still_present = [s for s in symptoms if s.symptom_type == self._selected_type]
+            if still_present:
+                self.symptom_selected.emit(still_present[0])
+                return
+
+        # Otherwise auto-select the highest severity symptom.
+        priority_order = [Severity.HIGH, Severity.MEDIUM, Severity.LOW]
+        for sev in priority_order:
+            matching = [s for s in symptoms if s.severity == sev]
+            if matching:
+                self._selected_type = matching[0].symptom_type
+                self.symptom_selected.emit(matching[0])
+                break
+
+    def _on_item_clicked(self, symptom: Symptom):
+        self._selected_type = symptom.symptom_type
+        self.symptom_selected.emit(symptom)
