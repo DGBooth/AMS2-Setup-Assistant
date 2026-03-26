@@ -13,7 +13,7 @@ from PyQt5.QtCore import Qt, QPoint, QSettings, pyqtSlot
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow,
-    QPushButton, QSizePolicy, QStyle, QVBoxLayout, QWidget,
+    QPushButton, QSizeGrip, QSizePolicy, QStyle, QVBoxLayout, QWidget,
 )
 
 from config import (
@@ -43,6 +43,7 @@ class OverlayWindow(QMainWindow):
         self._drag_pos: QPoint | None = None
         self._settings = QSettings("AMS2SetupAdvisor", "Overlay")
         self._minimised = False
+        self._expanded_size: tuple[int, int] | None = None
 
         self._init_window()
         self._build_ui()
@@ -64,8 +65,7 @@ class OverlayWindow(QMainWindow):
         self.setWindowOpacity(
             float(self._settings.value("opacity", OVERLAY_OPACITY))
         )
-        self.setFixedWidth(OVERLAY_WIDTH)
-        self.setMaximumHeight(OVERLAY_HEIGHT)
+        self.resize(OVERLAY_WIDTH, OVERLAY_HEIGHT)
 
     def _build_ui(self):
         central = QWidget()
@@ -94,6 +94,10 @@ class OverlayWindow(QMainWindow):
         content_layout.addWidget(self._suggestion_panel)
 
         root_layout.addWidget(self._content_widget)
+
+        grip = QSizeGrip(self)
+        grip.setFixedSize(16, 16)
+        root_layout.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
 
         # Connect symptom selection → suggestion update
         self._symptom_panel.symptom_selected.connect(self._on_symptom_selected)
@@ -181,6 +185,10 @@ class OverlayWindow(QMainWindow):
         self._drag_pos = None
         self._save_geometry()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._save_geometry()
+
     # ------------------------------------------------------------------
     # Minimise toggle
     # ------------------------------------------------------------------
@@ -189,12 +197,16 @@ class OverlayWindow(QMainWindow):
         self._minimised = not self._minimised
         self._content_widget.setVisible(not self._minimised)
         if self._minimised:
+            self._expanded_size = (self.width(), self.height())
             # Pin height to just the header — adjustSize() is unreliable on QMainWindow
             self.setFixedHeight(self._header_widget.sizeHint().height())
         else:
             self.setMinimumHeight(0)
-            self.setMaximumHeight(OVERLAY_HEIGHT)
-            self.adjustSize()
+            self.setMaximumHeight(16777215)  # release fixed-height constraint
+            if self._expanded_size is not None:
+                self.resize(*self._expanded_size)
+            else:
+                self.adjustSize()
 
     # ------------------------------------------------------------------
     # Settings
@@ -213,13 +225,19 @@ class OverlayWindow(QMainWindow):
     def _save_geometry(self):
         self._settings.setValue("x", self.x())
         self._settings.setValue("y", self.y())
+        if not self._minimised:
+            self._settings.setValue("w", self.width())
+            self._settings.setValue("h", self.height())
 
     def _restore_geometry(self):
+        w = int(self._settings.value("w", OVERLAY_WIDTH))
+        h = int(self._settings.value("h", OVERLAY_HEIGHT))
+        self.resize(w, h)
         x = int(self._settings.value("x", OVERLAY_DEFAULT_X))
         y = int(self._settings.value("y", OVERLAY_DEFAULT_Y))
         # Clamp to screen bounds
         screen = QApplication.primaryScreen().availableGeometry()
-        x = max(0, min(x, screen.width()  - OVERLAY_WIDTH))
+        x = max(0, min(x, screen.width()  - w))
         y = max(0, min(y, screen.height() - 60))
         self.move(x, y)
 
