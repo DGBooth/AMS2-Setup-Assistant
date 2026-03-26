@@ -19,7 +19,7 @@ A real-time setup advisor overlay for **Automobilista 2**. Reads telemetry from 
 
 ## Requirements
 
-- **Automobilista 2** with **CREST2** running (CREST2 ships with AMS2 — launch `CREST2.exe` from your AMS2 folder before or after starting the game)
+- **Automobilista 2** with **CREST2** running (CREST2 is available at [CREST2](https://github.com/viper4gh/CREST2-AMS2)
 - **Python 3.10+**
 
 ### Python dependencies
