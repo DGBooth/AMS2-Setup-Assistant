@@ -27,6 +27,25 @@ from ui.symptom_panel import SymptomPanel
 from ui.suggestion_panel import SuggestionPanel
 
 
+class _ResizeGrip(QSizeGrip):
+    """QSizeGrip with a painted dot-grid resize indicator."""
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        color = QColor(COLOR_ACCENT)
+        color.setAlpha(180)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(color)
+        dot, gap = 2, 4
+        for row in range(3):
+            for col in range(3):
+                if col + row >= 2:  # lower-right triangle only
+                    x = self.width()  - (3 - col) * gap
+                    y = self.height() - (3 - row) * gap
+                    painter.drawEllipse(x, y, dot, dot)
+
+
 def _load_stylesheet() -> str:
     qss_path = os.path.join(os.path.dirname(__file__), "..", "assets", "style.qss")
     try:
@@ -95,7 +114,7 @@ class OverlayWindow(QMainWindow):
 
         root_layout.addWidget(self._content_widget)
 
-        grip = QSizeGrip(self)
+        grip = _ResizeGrip(self)
         grip.setFixedSize(16, 16)
         root_layout.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
 
