@@ -25,17 +25,17 @@ A real-time setup advisor overlay for **Automobilista 2**. Reads telemetry from 
 ### Python dependencies
 
 ```
-pip install PyQt5 requests
+python3 -m pip install PyQt5 requests
 ```
 
 Optional (only needed for AI mode):
 ```
-pip install anthropic
+python3 -m pip install anthropic
 ```
 
 Optional (only needed for the development mock server):
 ```
-pip install flask
+python3 -m pip install flask
 ```
 
 ---
@@ -46,7 +46,7 @@ pip install flask
 2. Launch AMS2 and get into a session
 3. Run the overlay:
    ```
-   python main.py
+   python3 main.py
    ```
 
 Verify CREST2 is reachable by opening `http://localhost:8180/crest2/v1/api` in a browser — you should see a JSON response. The overlay will show a green dot in the header when connected.
@@ -156,7 +156,7 @@ CREST2 HTTP server (localhost:8180)
 ### Running tests
 
 ```
-python -m pytest tests/ -v
+python3 -m pytest tests/ -v
 ```
 
 ### Mock CREST2 server
@@ -164,8 +164,8 @@ python -m pytest tests/ -v
 Lets you develop and test without a running game:
 
 ```
-pip install flask
-python tests/mock_crest_server.py --scenario understeer
+python3 -m pip install flask
+python3 tests/mock_crest_server.py --scenario understeer
 ```
 
 Available scenarios: `idle`, `understeer`, `oversteer`, `traction`, `braking`, `tyre_hot`, `tyre_cold`, `bottoming`
@@ -180,7 +180,7 @@ curl -X POST http://localhost:8180/scenario/oversteer
 Prints live signal values to the console each poll cycle — useful for verifying telemetry field mappings:
 
 ```
-python main.py --debug
+python3 main.py --debug
 ```
 
 Output includes: speed, steering, throttle, brake, yaw rate, expected yaw, lateral G, per-wheel RPS, tyre tread temperatures, ABS/TC flags, and raw angular velocity / local acceleration components.
@@ -188,7 +188,7 @@ Output includes: speed, steering, throttle, brake, yaw rate, expected yaw, later
 ### Packaging (Windows executable)
 
 ```
-pip install pyinstaller
+python3 -m pip install pyinstaller
 pyinstaller --onefile --windowed --name "AMS2SetupAdvisor" main.py
 ```
 
