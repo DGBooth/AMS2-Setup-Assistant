@@ -12,7 +12,8 @@
       "WebFetch(domain:automobilista-2.fandom.com)",
       "WebFetch(domain:simracingcockpit.gg)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python -c \":*)"
     ]
   }
 }
