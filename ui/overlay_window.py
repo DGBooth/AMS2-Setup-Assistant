@@ -13,7 +13,8 @@ from PyQt5.QtCore import Qt, QPoint, QSettings, pyqtSlot
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow,
-    QPushButton, QSizeGrip, QSizePolicy, QStyle, QVBoxLayout, QWidget,
+    QPushButton, QSizeGrip, QSizePolicy, QStyle, QTabWidget,
+    QVBoxLayout, QWidget,
 )
 
 from config import (
@@ -21,10 +22,17 @@ from config import (
     OVERLAY_HEIGHT, OVERLAY_OPACITY, OVERLAY_WIDTH,
 )
 from data_layer.data_models import TelemetrySnapshot
-from analysis.symptom_detector import Symptom
+from analysis.symptom_detector import Symptom, SymptomType
 from analysis.suggestion_table import SuggestionEntry
 from ui.symptom_panel import SymptomPanel
 from ui.suggestion_panel import SuggestionPanel
+
+# Symptom types that belong on the Technique tab rather than the Setup tab
+_TECHNIQUE_SYMPTOM_TYPES = frozenset({
+    SymptomType.LATE_BRAKING,
+    SymptomType.EARLY_THROTTLE,
+    SymptomType.SLOW_CORNER_EXIT,
+})
 
 
 class _ResizeGrip(QSizeGrip):
@@ -103,23 +111,44 @@ class OverlayWindow(QMainWindow):
         # Content area
         self._content_widget = QWidget()
         content_layout = QVBoxLayout(self._content_widget)
-        content_layout.setContentsMargins(0, 4, 0, 0)
+        content_layout.setContentsMargins(0, 2, 0, 0)
         content_layout.setSpacing(0)
 
+        tabs = QTabWidget()
+        tabs.setObjectName("mainTabs")
+
+        # --- Setup tab ---
+        setup_tab = QWidget()
+        setup_layout = QVBoxLayout(setup_tab)
+        setup_layout.setContentsMargins(0, 0, 0, 0)
+        setup_layout.setSpacing(0)
         self._symptom_panel = SymptomPanel()
         self._suggestion_panel = SuggestionPanel()
+        setup_layout.addWidget(self._symptom_panel)
+        setup_layout.addWidget(self._suggestion_panel)
+        tabs.addTab(setup_tab, "SETUP")
 
-        content_layout.addWidget(self._symptom_panel)
-        content_layout.addWidget(self._suggestion_panel)
+        # --- Technique tab ---
+        technique_tab = QWidget()
+        technique_layout = QVBoxLayout(technique_tab)
+        technique_layout.setContentsMargins(0, 0, 0, 0)
+        technique_layout.setSpacing(0)
+        self._technique_panel = SymptomPanel(title="CORNER TECHNIQUE")
+        self._technique_suggestion_panel = SuggestionPanel()
+        technique_layout.addWidget(self._technique_panel)
+        technique_layout.addWidget(self._technique_suggestion_panel)
+        tabs.addTab(technique_tab, "TECHNIQUE")
 
+        content_layout.addWidget(tabs)
         root_layout.addWidget(self._content_widget)
 
         grip = _ResizeGrip(self)
         grip.setFixedSize(16, 16)
         root_layout.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
 
-        # Connect symptom selection → suggestion update
+        # Connect symptom selection → suggestion update for each tab
         self._symptom_panel.symptom_selected.connect(self._on_symptom_selected)
+        self._technique_panel.symptom_selected.connect(self._on_technique_symptom_selected)
 
     def _build_header(self) -> QWidget:
         bar = QFrame()
@@ -182,7 +211,10 @@ class OverlayWindow(QMainWindow):
 
     @pyqtSlot(list)
     def update_symptoms(self, symptoms: list[Symptom]):
-        self._symptom_panel.update_symptoms(symptoms)
+        setup_symptoms = [s for s in symptoms if s.symptom_type not in _TECHNIQUE_SYMPTOM_TYPES]
+        technique_symptoms = [s for s in symptoms if s.symptom_type in _TECHNIQUE_SYMPTOM_TYPES]
+        self._symptom_panel.update_symptoms(setup_symptoms)
+        self._technique_panel.update_symptoms(technique_symptoms)
 
     @pyqtSlot(object, list)
     def show_suggestions(self, symptom: Symptom, suggestions: list[SuggestionEntry]):
@@ -270,6 +302,13 @@ class OverlayWindow(QMainWindow):
         from config import MAX_SUGGESTIONS_SHOWN
         suggestions = get_suggestions(symptom, MAX_SUGGESTIONS_SHOWN)
         self._suggestion_panel.show_suggestions(symptom, suggestions)
+
+    @pyqtSlot(object)
+    def _on_technique_symptom_selected(self, symptom: Symptom):
+        from analysis.suggestion_table import get_suggestions
+        from config import MAX_SUGGESTIONS_SHOWN
+        suggestions = get_suggestions(symptom, MAX_SUGGESTIONS_SHOWN)
+        self._technique_suggestion_panel.show_suggestions(symptom, suggestions)
 
     # ------------------------------------------------------------------
     # Paint translucent background
