@@ -264,3 +264,109 @@ QCheckBox::indicator:checked {
     background: rgba(45, 106, 159, 220);
     border-color: #44aaff;
 }
+
+/* ------------------------------------------------------------------ */
+/* Fuel calculator panel                                                */
+/* ------------------------------------------------------------------ */
+
+#fuelStatsFrame {
+    background: rgba(20, 30, 45, 140);
+    border: 1px solid rgba(45, 106, 159, 60);
+    border-radius: 4px;
+}
+
+#fuelStatLabel {
+    color: #aaaacc;
+    font-size: 10px;
+}
+
+#fuelFieldLabel {
+    color: #888888;
+    font-size: 11px;
+}
+
+#fuelResultFrame {
+    background: rgba(20, 40, 30, 160);
+    border: 1px solid rgba(60, 140, 80, 100);
+    border-radius: 5px;
+    margin-top: 2px;
+}
+
+#fuelResultMain {
+    color: #66dd88;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+#fuelResultDetail {
+    color: #888888;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+QPushButton#calcButton {
+    background: rgba(40, 100, 60, 180);
+    border: 1px solid rgba(60, 160, 90, 180);
+    color: #88ffaa;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    padding: 5px 10px;
+}
+
+QPushButton#calcButton:hover {
+    background: rgba(50, 130, 75, 220);
+}
+
+QPushButton#calcButton:pressed {
+    background: rgba(30, 80, 45, 220);
+}
+
+QRadioButton {
+    color: #cccccc;
+    spacing: 6px;
+    font-size: 11px;
+}
+
+QRadioButton::indicator {
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(60, 80, 110, 200);
+    border-radius: 6px;
+    background: rgba(30, 30, 50, 200);
+}
+
+QRadioButton::indicator:checked {
+    background: rgba(45, 106, 159, 220);
+    border-color: #44aaff;
+}
+
+QSpinBox, QDoubleSpinBox {
+    font-size: 11px;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    width: 14px;
+    background: rgba(40, 50, 70, 180);
+    border: none;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid #44aaff;
+    width: 0;
+    height: 0;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #44aaff;
+    width: 0;
+    height: 0;
+}
