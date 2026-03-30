@@ -50,6 +50,8 @@ def _base():
             "mOrientation": [0.0, 0.0, 0.0],
             "mEngineSpeed": 7200.0,
             "mEngineTorque": 280.0,
+            "mFuelCapacity": 100.0,     # litres — typical GT/formula tank
+            "mFuelLevel": 0.72,         # fraction of capacity (72 L remaining)
         },
         "wheelsAndTyres": {
             "mTyreRPS": [42.0, 42.0, 42.0, 42.0],

@@ -1,13 +1,17 @@
 """
 Fuel calculator panel — third tab of the overlay.
 
-Allows the user to:
-  • Record lap time + fuel-per-lap for multiple laps (average over all entries)
-  • Calculate total fuel needed for a race by laps or by time
-  • A safety buffer is always added to the final recommendation
+Auto-tracking (when CREST2 is connected):
+  • Records fuel level at the start of each lap.
+  • When a lap completes (last_lap_time changes) the used-fuel delta is
+    computed automatically and the entry is logged without user input.
 
-When telemetry is connected the lap-time field auto-fills on each completed
-lap; the user only needs to enter the fuel used and click "+".
+Manual fallback:
+  • The user can also type in a lap time + fuel figure and click "+".
+  • Useful for out-laps or laps where telemetry was interrupted.
+
+In every calculation a 5 % safety buffer is added so the recommendation
+is always slightly more than the bare minimum.
 """
 
 from __future__ import annotations
@@ -19,12 +23,10 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QRadioButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
-# Safety margin added to every recommendation
 _SAFETY_BUFFER = 0.05   # 5 %
 
 
 def _fmt_time(total_seconds: float) -> str:
-    """Format a duration as m:ss.t (e.g. 1:43.2)."""
     minutes = int(total_seconds) // 60
     secs = total_seconds - minutes * 60
     return f"{minutes}:{secs:04.1f}"
@@ -35,8 +37,12 @@ class FuelCalculatorPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._lap_data: list[tuple[float, float]] = []   # (lap_time_s, fuel_litres)
-        self._last_seen_lap_time: float = -1.0           # track changes in telemetry
+        self._lap_data: list[tuple[float, float]] = []  # (lap_time_s, fuel_litres)
+
+        # Auto-tracking state
+        self._last_seen_lap_time: float = -1.0
+        self._fuel_at_lap_start: float | None = None    # litres at start of current lap
+
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -48,14 +54,12 @@ class FuelCalculatorPanel(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(6)
 
-        # ---- Lap data entry ----
         layout.addWidget(_section_header("LAP DATA"))
         layout.addWidget(self._build_entry_row())
         layout.addWidget(self._build_avg_display())
 
         layout.addWidget(_divider())
 
-        # ---- Race calculation ----
         layout.addWidget(_section_header("RACE CALCULATION"))
         layout.addWidget(self._build_mode_row())
         layout.addWidget(self._build_race_inputs())
@@ -105,8 +109,8 @@ class FuelCalculatorPanel(QWidget):
 
         add_btn = QPushButton("+")
         add_btn.setFixedWidth(28)
-        add_btn.setToolTip("Record this lap")
-        add_btn.clicked.connect(self._add_lap)
+        add_btn.setToolTip("Record this lap manually")
+        add_btn.clicked.connect(self._add_lap_manual)
         hl.addWidget(add_btn)
 
         clear_btn = QPushButton("Clear")
@@ -161,7 +165,7 @@ class FuelCalculatorPanel(QWidget):
         vl.setContentsMargins(0, 0, 0, 0)
         vl.setSpacing(4)
 
-        # --- Laps row ---
+        # Laps row
         self._laps_row = QWidget()
         hl = QHBoxLayout(self._laps_row)
         hl.setContentsMargins(0, 0, 0, 0)
@@ -175,7 +179,7 @@ class FuelCalculatorPanel(QWidget):
         hl.addStretch()
         vl.addWidget(self._laps_row)
 
-        # --- Time rows ---
+        # Time rows
         self._time_rows = QWidget()
         tl = QVBoxLayout(self._time_rows)
         tl.setContentsMargins(0, 0, 0, 0)
@@ -195,10 +199,9 @@ class FuelCalculatorPanel(QWidget):
         hl2.addStretch()
         tl.addWidget(time_row)
 
-        self._plus_one_lap = QCheckBox("Time + 1 lap  (race ends at end of lap after timer)")
+        self._plus_one_lap = QCheckBox("Time + 1 lap  (extra lap after timer expires)")
         self._plus_one_lap.setToolTip(
-            "Tick if the race format runs one extra lap after the timer expires "
-            "(e.g. leader crosses the line after time-out and all cars get one more lap)."
+            "Tick for race formats that run one extra lap after the timer expires."
         )
         tl.addWidget(self._plus_one_lap)
 
@@ -228,33 +231,55 @@ class FuelCalculatorPanel(QWidget):
         return frame
 
     # ------------------------------------------------------------------
-    # Public API — called from OverlayWindow when new telemetry arrives
+    # Public API — called from OverlayWindow on every telemetry tick
     # ------------------------------------------------------------------
 
-    def update_snapshot(self, last_lap_time: float) -> None:
-        """Auto-fill the lap-time entry when a new lap completes in-game."""
-        if last_lap_time <= 0.0:
-            return
-        if last_lap_time == self._last_seen_lap_time:
-            return
-        self._last_seen_lap_time = last_lap_time
-        minutes = int(last_lap_time) // 60
-        secs = last_lap_time - minutes * 60
-        self._lap_min.setValue(minutes)
-        self._lap_sec.setValue(round(secs, 1))
+    def update_snapshot(self, last_lap_time: float, fuel_litres: float) -> None:
+        """
+        Called every poll cycle with the latest telemetry values.
+
+        - Tracks fuel level at the start of each lap.
+        - Detects a completed lap when last_lap_time changes and
+          automatically records (lap_time, fuel_used) without user input.
+        - Also pre-fills the manual entry fields as a fallback.
+        """
+        # Initialise fuel tracking on first valid reading
+        if self._fuel_at_lap_start is None and fuel_litres > 0.0:
+            self._fuel_at_lap_start = fuel_litres
+
+        lap_completed = (
+            last_lap_time > 0.0
+            and last_lap_time != self._last_seen_lap_time
+        )
+
+        if lap_completed:
+            fuel_used = None
+            if self._fuel_at_lap_start is not None and fuel_litres > 0.0:
+                fuel_used = self._fuel_at_lap_start - fuel_litres
+
+            if fuel_used is not None and fuel_used > 0.05:
+                # Auto-log the completed lap
+                self._log_lap(last_lap_time, fuel_used)
+            else:
+                # Telemetry unavailable — pre-fill time field for manual entry
+                minutes = int(last_lap_time) // 60
+                secs = last_lap_time - minutes * 60
+                self._lap_min.setValue(minutes)
+                self._lap_sec.setValue(round(secs, 1))
+
+            self._last_seen_lap_time = last_lap_time
+            # Reset lap-start fuel to current reading for the next lap
+            self._fuel_at_lap_start = fuel_litres if fuel_litres > 0.0 else None
 
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
 
-    def _add_lap(self):
+    def _add_lap_manual(self):
         lap_time_s = self._lap_min.value() * 60.0 + self._lap_sec.value()
         if lap_time_s < 5.0:
-            return   # guard against accidental zero entry
-        fuel = self._lap_fuel.value()
-        self._lap_data.append((lap_time_s, fuel))
-        self._update_averages()
-        self._recalculate()
+            return
+        self._log_lap(lap_time_s, self._lap_fuel.value())
 
     def _clear_laps(self):
         self._lap_data.clear()
@@ -265,6 +290,15 @@ class FuelCalculatorPanel(QWidget):
     def _on_mode_changed(self, laps_mode: bool):
         self._laps_row.setVisible(laps_mode)
         self._time_rows.setVisible(not laps_mode)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _log_lap(self, lap_time_s: float, fuel_used: float):
+        self._lap_data.append((lap_time_s, fuel_used))
+        self._update_averages()
+        self._recalculate()
 
     def _update_averages(self):
         n = len(self._lap_data)
@@ -291,18 +325,13 @@ class FuelCalculatorPanel(QWidget):
         if self._mode_laps.isChecked():
             race_laps = self._race_laps.value()
             base_fuel = avg_fuel * race_laps
-            detail_laps = race_laps
             detail = f"{race_laps} laps × {avg_fuel:.2f} L/lap"
         else:
             race_secs = self._race_time_min.value() * 60.0
-            # Laps that could be started before time runs out
-            timed_laps = math.ceil(race_secs / avg_time_s)
+            race_laps = math.ceil(race_secs / avg_time_s)
             if self._plus_one_lap.isChecked():
-                # One extra lap after the timer expires
-                timed_laps += 1
-            race_laps = timed_laps
+                race_laps += 1
             base_fuel = avg_fuel * race_laps
-            detail_laps = race_laps
             suffix = " (+1 lap)" if self._plus_one_lap.isChecked() else ""
             detail = (
                 f"{self._race_time_min.value()} min{suffix} "
@@ -311,7 +340,6 @@ class FuelCalculatorPanel(QWidget):
 
         recommended = base_fuel * (1.0 + _SAFETY_BUFFER)
         buffer_litres = recommended - base_fuel
-
         self._result_main.setText(f"{recommended:.1f} L")
         self._result_detail.setText(
             f"{detail}\n"
@@ -320,7 +348,7 @@ class FuelCalculatorPanel(QWidget):
 
 
 # ------------------------------------------------------------------
-# Private helpers
+# Widget helpers
 # ------------------------------------------------------------------
 
 def _section_header(text: str) -> QLabel:

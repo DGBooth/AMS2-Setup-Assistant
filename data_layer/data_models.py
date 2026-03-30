@@ -34,6 +34,8 @@ class CarState:
     # Euler angles: [0]=roll, [1]=pitch, [2]=yaw (radians)
     mEngineSpeed: float = 0.0                   # rpm
     mEngineTorque: float = 0.0                  # Nm
+    mFuelCapacity: float = 0.0                  # litres — tank size
+    mFuelLevel: float = 0.0                     # fraction of capacity (0.0 … 1.0)
 
 
 @dataclass
@@ -96,6 +98,11 @@ class TelemetrySnapshot:
     last_lap_time: float = -1.0        # seconds; -1 = no lap completed yet this session
 
     @property
+    def fuel_litres(self) -> float:
+        """Current fuel load in litres (level fraction × tank capacity)."""
+        return self.car_state.mFuelLevel * self.car_state.mFuelCapacity
+
+    @property
     def speed_kph(self) -> float:
         return self.car_state.mSpeed * 3.6
 
@@ -132,6 +139,8 @@ def parse_car_state(data: dict) -> CarState:
         mOrientation=_float_list(cs.get("mOrientation", [0, 0, 0]), 3),
         mEngineSpeed=float(cs.get("mEngineSpeed", 0)),
         mEngineTorque=float(cs.get("mEngineTorque", 0)),
+        mFuelCapacity=float(cs.get("mFuelCapacity", 0)),
+        mFuelLevel=float(cs.get("mFuelLevel", 0)),
     )
 
 
