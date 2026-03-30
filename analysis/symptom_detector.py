@@ -19,11 +19,24 @@ from config import (
     ABS_OVER_INTERVENTION_STEER,
     BRAKE_INPUT_MIN,
     BRAKE_TEMP_ASYMMETRY_C,
+    CORNER_DETECT_STEER_MIN,
+    CORNER_DETECT_LAT_G_MIN,
+    CORNER_RESET_SAMPLES,
+    CORNER_PEAK_LAT_G_MIN,
+    EARLY_THROTTLE_LAT_G,
+    EARLY_THROTTLE_MIN,
+    EARLY_THROTTLE_STEER_MIN,
+    LATE_BRAKE_INPUT_MIN,
+    LATE_BRAKE_STEER_MIN,
     MIN_SPEED_CORNER_KPH,
     MIN_SPEED_TRACTION_KPH,
     OVERSTEER_STEERING_CORRECTION,
     OVERSTEER_YAW_EXCESS_RATIO,
     RIDE_HEIGHT_FLOOR_MM,
+    SLOW_EXIT_MIN_SPEED_KPH,
+    SLOW_EXIT_STEER_MAX,
+    SLOW_EXIT_THROTTLE_MAX,
+    SLOW_EXIT_WINDOW_SAMPLES,
     SUSPENSION_TRAVEL_MAXED_RATIO,
     TRACTION_SPIN_DELTA_RPS,
     TRACTION_THROTTLE_MIN,
@@ -60,6 +73,9 @@ class SymptomType(Enum):
     ABS_INSUFFICIENT    = auto()
     ABS_OVER_INTERVENTION = auto()
     OFF_TRACK           = auto()
+    LATE_BRAKING        = auto()
+    EARLY_THROTTLE      = auto()
+    SLOW_CORNER_EXIT    = auto()
 
 
 @dataclass
@@ -94,22 +110,96 @@ _LABELS: dict[SymptomType, str] = {
     SymptomType.TYRE_OVERHEATING:     "Tyre overheating",
     SymptomType.TYRE_UNDERTEMP:       "Tyre undertemperature",
     SymptomType.SUSPENSION_BOTTOMING: "Suspension bottoming",
-    SymptomType.WHEEL_LOCK:             "Wheel lock-up",
-    SymptomType.ABS_INSUFFICIENT:      "ABS setting too low",
+    SymptomType.WHEEL_LOCK:           "Wheel lock-up",
+    SymptomType.ABS_INSUFFICIENT:     "ABS setting too low",
     SymptomType.ABS_OVER_INTERVENTION: "ABS too aggressive",
-    SymptomType.OFF_TRACK:             "Off-track",
+    SymptomType.OFF_TRACK:            "Off-track",
+    SymptomType.LATE_BRAKING:         "Late braking (in-corner)",
+    SymptomType.EARLY_THROTTLE:       "Early throttle (pre-apex)",
+    SymptomType.SLOW_CORNER_EXIT:     "Slow corner exit (late throttle)",
 }
+
+
+class CornerTracker:
+    """
+    Lightweight state machine that tracks whether the car is currently in, or
+    has recently exited, a corner.  Updated once per poll cycle by
+    SymptomDetector before the technique checks run.
+
+    A "corner" is defined as sustained steering + lateral G above threshold at
+    racing speed.  The tracker records the peak lateral G reached so that
+    trivial bends can be ignored when checking for slow exits.
+    """
+
+    def __init__(self) -> None:
+        self._in_corner: bool = False
+        self._samples_since_exit: int = 999   # large value = no recent corner
+        self._peak_lat_g_current: float = 0.0  # accumulates while in corner
+        self._peak_lat_g_last: float = 0.0     # snapshot from the corner just exited
+
+    def update(self, sig: SmoothedSignals) -> None:
+        steer_abs = abs(sig.steering)
+        lat_g_abs = abs(sig.lateral_g)
+
+        cornering_now = (
+            steer_abs > CORNER_DETECT_STEER_MIN
+            and lat_g_abs > CORNER_DETECT_LAT_G_MIN
+            and sig.speed_kph > MIN_SPEED_CORNER_KPH
+        )
+
+        if cornering_now:
+            if not self._in_corner:
+                # Corner entry — reset current-corner accumulator
+                self._peak_lat_g_current = 0.0
+            self._in_corner = True
+            self._samples_since_exit = 0
+            self._peak_lat_g_current = max(self._peak_lat_g_current, lat_g_abs)
+        else:
+            if self._in_corner:
+                # Transition: just left the corner
+                self._in_corner = False
+                self._peak_lat_g_last = self._peak_lat_g_current
+                self._peak_lat_g_current = 0.0
+                self._samples_since_exit = 1
+            elif self._samples_since_exit < 999:
+                self._samples_since_exit += 1
+                if self._samples_since_exit > CORNER_RESET_SAMPLES:
+                    # Corner fully complete — stop tracking this exit
+                    self._samples_since_exit = 999
+
+    @property
+    def in_corner(self) -> bool:
+        return self._in_corner
+
+    @property
+    def recently_exited(self) -> bool:
+        """True for the first SLOW_EXIT_WINDOW_SAMPLES cycles after leaving a corner."""
+        return 1 <= self._samples_since_exit <= SLOW_EXIT_WINDOW_SAMPLES
+
+    @property
+    def peak_lat_g_last(self) -> float:
+        """Peak lateral G from the most recently completed corner."""
+        return self._peak_lat_g_last
 
 
 class SymptomDetector:
     """
-    Stateless rule evaluator.  Call detect() every poll cycle with the
-    current SmoothedSignals and receive a (possibly empty) list of Symptoms.
+    Rule evaluator.  Call detect() every poll cycle with the current
+    SmoothedSignals and receive a (possibly empty) list of Symptoms.
+
+    Maintains a CornerTracker instance to support timing-based technique
+    checks that require state across multiple poll cycles.
     """
+
+    def __init__(self) -> None:
+        self._corner_tracker = CornerTracker()
 
     def detect(self, sig: SmoothedSignals) -> list[Symptom]:
         if not sig.game_running:
             return []
+
+        # Update corner phase tracker before any technique checks
+        self._corner_tracker.update(sig)
 
         symptoms: list[Symptom] = []
 
@@ -122,6 +212,9 @@ class SymptomDetector:
         symptoms.extend(self._check_wheel_lock(sig))
         symptoms.extend(self._check_abs_calibration(sig))
         symptoms.extend(self._check_off_track(sig))
+        symptoms.extend(self._check_late_braking(sig))
+        symptoms.extend(self._check_early_throttle(sig))
+        symptoms.extend(self._check_slow_corner_exit(sig))
 
         return symptoms
 
@@ -386,6 +479,100 @@ class SymptomDetector:
             context={
                 "brake_input": round(sig.unfiltered_brake, 2),
                 "abs_setting": sig.abs_setting,
+                "speed_kph": round(sig.speed_kph, 1),
+            },
+        )]
+
+    def _check_late_braking(self, sig: SmoothedSignals) -> list[Symptom]:
+        """Detect braking hard while the car is already significantly steered.
+
+        True late-braking technique (progressive trail-braking) gradually
+        releases the brake as steering is added.  Simultaneous heavy brake and
+        high steering input indicates panic braking into the corner, which
+        overloads the front tyres and causes lock-up or push.
+        """
+        if sig.speed_kph < MIN_SPEED_CORNER_KPH:
+            return []
+
+        brake = sig.unfiltered_brake
+        steer_abs = abs(sig.steering)
+
+        if brake < LATE_BRAKE_INPUT_MIN or steer_abs < LATE_BRAKE_STEER_MIN:
+            return []
+
+        # Severity scales with how deeply both inputs overlap
+        overlap = brake * steer_abs
+        sev = Severity.HIGH if overlap > 0.40 else Severity.MEDIUM
+        return [Symptom(
+            symptom_type=SymptomType.LATE_BRAKING,
+            severity=sev,
+            context={
+                "brake_input": round(brake, 2),
+                "steering": round(sig.steering, 2),
+                "overlap_index": round(overlap, 2),
+                "speed_kph": round(sig.speed_kph, 1),
+            },
+        )]
+
+    def _check_early_throttle(self, sig: SmoothedSignals) -> list[Symptom]:
+        """Detect heavy throttle applied while the car is still mid-corner.
+
+        Getting on the throttle hard before the apex shifts weight rearward
+        while the car is still generating significant lateral force, destabilising
+        the rear and causing oversteer or a wide exit.  Flags when throttle is
+        high and lateral G confirms the car is still in the body of the corner.
+        """
+        if sig.speed_kph < MIN_SPEED_CORNER_KPH:
+            return []
+
+        throttle = sig.unfiltered_throttle
+        lat_g_abs = abs(sig.lateral_g)
+        steer_abs = abs(sig.steering)
+
+        if (throttle < EARLY_THROTTLE_MIN
+                or lat_g_abs < EARLY_THROTTLE_LAT_G
+                or steer_abs < EARLY_THROTTLE_STEER_MIN):
+            return []
+
+        sev = Severity.HIGH if throttle > 0.80 and lat_g_abs > 1.0 else Severity.MEDIUM
+        return [Symptom(
+            symptom_type=SymptomType.EARLY_THROTTLE,
+            severity=sev,
+            context={
+                "throttle": round(throttle, 2),
+                "lateral_g": round(sig.lateral_g, 2),
+                "steering": round(sig.steering, 2),
+                "speed_kph": round(sig.speed_kph, 1),
+            },
+        )]
+
+    def _check_slow_corner_exit(self, sig: SmoothedSignals) -> list[Symptom]:
+        """Detect a missed exit — car is straight post-apex but driver is off throttle.
+
+        After the apex, as steering unwinds and lateral G drops, the driver
+        should be progressively increasing throttle.  Staying off the throttle
+        while the car is essentially straight at speed loses significant time
+        and may indicate fear of a setup-induced exit snap or traction problem.
+        """
+        if not self._corner_tracker.recently_exited:
+            return []
+        # Require the corner itself was significant (not a gentle motorway bend)
+        if self._corner_tracker.peak_lat_g_last < CORNER_PEAK_LAT_G_MIN:
+            return []
+        if sig.speed_kph < SLOW_EXIT_MIN_SPEED_KPH:
+            return []
+        if abs(sig.steering) > SLOW_EXIT_STEER_MAX:
+            return []   # car is still turning
+        if sig.unfiltered_throttle > SLOW_EXIT_THROTTLE_MAX:
+            return []   # driver is on it
+
+        return [Symptom(
+            symptom_type=SymptomType.SLOW_CORNER_EXIT,
+            severity=Severity.LOW,
+            context={
+                "throttle": round(sig.unfiltered_throttle, 2),
+                "steering": round(sig.steering, 2),
+                "peak_lateral_g": round(self._corner_tracker.peak_lat_g_last, 2),
                 "speed_kph": round(sig.speed_kph, 1),
             },
         )]

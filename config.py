@@ -66,6 +66,27 @@ ABS_LOW_SETTING_MAX           = 2      # settings at or below this are considere
 ABS_OVER_INTERVENTION_BRAKE   = 0.45  # ABS firing below this brake input → too aggressive
 ABS_OVER_INTERVENTION_STEER   = 0.15  # ignore if driver is cornering (ABS in corner is normal)
 
+# Corner phase tracking (used by CornerTracker)
+CORNER_DETECT_STEER_MIN       = 0.25   # minimum steering to consider car "in corner"
+CORNER_DETECT_LAT_G_MIN       = 0.40   # minimum lateral G to confirm cornering
+CORNER_RESET_SAMPLES          = 8      # non-cornering samples before corner state fully resets
+CORNER_PEAK_LAT_G_MIN         = 0.60   # minimum peak G for a corner to qualify as significant
+
+# Late braking — braking hard while already significantly steered
+LATE_BRAKE_INPUT_MIN          = 0.45   # minimum brake input to flag
+LATE_BRAKE_STEER_MIN          = 0.30   # minimum steering confirming car is mid-corner
+
+# Early throttle — throttle applied before the car reaches the apex
+EARLY_THROTTLE_MIN            = 0.60   # minimum throttle to flag
+EARLY_THROTTLE_LAT_G          = 0.75   # minimum lateral G confirming still mid-corner
+EARLY_THROTTLE_STEER_MIN      = 0.25   # minimum steering confirming car is still turning
+
+# Slow corner exit — car is straight post-apex but driver is not on throttle
+SLOW_EXIT_THROTTLE_MAX        = 0.15   # throttle below this = missing the exit
+SLOW_EXIT_STEER_MAX           = 0.15   # steering below this = car is straight
+SLOW_EXIT_MIN_SPEED_KPH       = 60     # only flag at meaningful speeds
+SLOW_EXIT_WINDOW_SAMPLES      = 3      # samples after corner exit to flag late throttle
+
 # Suspension bottoming
 SUSPENSION_TRAVEL_MAXED_RATIO = 0.92   # travel / max_travel above this → bottoming risk
 RIDE_HEIGHT_FLOOR_MM          = 15.0   # mm — below this → touching down

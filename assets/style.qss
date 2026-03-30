@@ -175,6 +175,39 @@ QPushButton#aiButton:hover {
     background: rgba(100, 70, 160, 200);
 }
 
+/* Tab widget */
+QTabWidget#mainTabs::pane {
+    border: none;
+    background: transparent;
+}
+
+QTabWidget#mainTabs::tab-bar {
+    left: 4px;
+}
+
+QTabBar::tab {
+    background: rgba(20, 20, 35, 160);
+    color: #666688;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 4px 14px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    min-width: 60px;
+}
+
+QTabBar::tab:selected {
+    color: #44aaff;
+    border-bottom: 2px solid #44aaff;
+    background: rgba(30, 40, 60, 180);
+}
+
+QTabBar::tab:hover:!selected {
+    color: #aaaacc;
+    background: rgba(25, 25, 45, 160);
+}
+
 /* Settings dialog */
 QDialog {
     background: rgba(18, 18, 28, 255);
