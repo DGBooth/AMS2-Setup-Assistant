@@ -26,6 +26,7 @@ from analysis.symptom_detector import Symptom, SymptomType
 from analysis.suggestion_table import SuggestionEntry
 from ui.symptom_panel import SymptomPanel
 from ui.suggestion_panel import SuggestionPanel
+from ui.fuel_calculator import FuelCalculatorPanel
 
 # Symptom types that belong on the Technique tab rather than the Setup tab
 _TECHNIQUE_SYMPTOM_TYPES = frozenset({
@@ -139,6 +140,10 @@ class OverlayWindow(QMainWindow):
         technique_layout.addWidget(self._technique_suggestion_panel)
         tabs.addTab(technique_tab, "TECHNIQUE")
 
+        # --- Fuel tab ---
+        self._fuel_panel = FuelCalculatorPanel()
+        tabs.addTab(self._fuel_panel, "FUEL")
+
         content_layout.addWidget(tabs)
         root_layout.addWidget(self._content_widget)
 
@@ -208,6 +213,8 @@ class OverlayWindow(QMainWindow):
         )
         if snapshot.vehicle_info.mCarName:
             self._car_label.setText(snapshot.vehicle_info.mCarName)
+        # Forward lap timing and fuel level to the fuel calculator
+        self._fuel_panel.update_snapshot(snapshot.last_lap_time, snapshot.fuel_litres)
 
     @pyqtSlot(list)
     def update_symptoms(self, symptoms: list[Symptom]):
