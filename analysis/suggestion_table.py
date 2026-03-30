@@ -491,6 +491,128 @@ SUGGESTIONS: dict[SymptomType, list[SuggestionEntry]] = {
             category="tyres",
         ),
     ],
+
+    # -----------------------------------------------------------------------
+    SymptomType.LATE_BRAKING: [
+        SuggestionEntry(
+            title="Move brake bias rearward",
+            detail="Shift brake balance 1–2% toward the rear. Heavy simultaneous brake "
+                   "and steering locks the front tyres and pushes the car wide. A rear "
+                   "bias reduces peak front brake torque, allowing the fronts to steer "
+                   "while still decelerating.",
+            priority=1,
+            category="brakes",
+        ),
+        SuggestionEntry(
+            title="Soften front slow bump damping",
+            detail="Reduce front slow bump 2–3 clicks. When braking and turning "
+                   "simultaneously, the front suspension must absorb both longitudinal "
+                   "and lateral load spikes. Softer slow bump lets the tyre comply with "
+                   "the road rather than skating across it.",
+            priority=2,
+            category="suspension",
+        ),
+        SuggestionEntry(
+            title="Soften front anti-roll bar",
+            detail="Reduce front ARB 2–3 clicks. A stiff front ARB resists body roll, "
+                   "but under combined braking and cornering load it also reduces how much "
+                   "weight the outer front can carry, causing the tyre to exceed its grip "
+                   "limit sooner.",
+            priority=3,
+            category="suspension",
+        ),
+        SuggestionEntry(
+            title="Check front brake duct sizing",
+            detail="Ensure front brake ducts are appropriate for the circuit. Sustained "
+                   "hard braking into corners rapidly heats the brakes; overheated "
+                   "brakes fade and produce an inconsistent pedal, making it harder to "
+                   "modulate pressure accurately under cornering load.",
+            priority=4,
+            category="brakes",
+        ),
+    ],
+
+    # -----------------------------------------------------------------------
+    SymptomType.EARLY_THROTTLE: [
+        SuggestionEntry(
+            title="Reduce LSD power ramp angle",
+            detail="Lower the on-power ramp (lock) setting on the differential. Applying "
+                   "throttle hard before the apex asks the diff to lock up while the car "
+                   "is still generating high lateral G. A high power ramp at this point "
+                   "snaps the rear sideways — reducing it gives a more progressive "
+                   "rotation on exit.",
+            priority=1,
+            category="differential",
+        ),
+        SuggestionEntry(
+            title="Stiffen rear anti-roll bar",
+            detail="Increase rear ARB 2–3 clicks. A softer rear ARB allows the rear to "
+                   "roll and unload the inside rear tyre when throttle is applied "
+                   "mid-corner. A stiffer setting keeps the rear platform flatter, "
+                   "resisting the rotation caused by early power application.",
+            priority=2,
+            category="suspension",
+        ),
+        SuggestionEntry(
+            title="Check rear tyre pressures",
+            detail="Verify rear tyre pressures are within the recommended range. High "
+                   "pressures reduce the contact patch and make the rear more sensitive "
+                   "to load changes — early throttle on an overinflated rear tyre "
+                   "significantly increases the snap oversteer risk.",
+            priority=3,
+            category="tyres",
+        ),
+        SuggestionEntry(
+            title="Add rear negative camber",
+            detail="Increase rear camber magnitude by 0.2–0.3°. As the car accelerates "
+                   "and the body squats, more camber keeps the rear tyre's contact patch "
+                   "better loaded under the combined lateral and longitudinal forces of "
+                   "an early throttle application.",
+            priority=4,
+            category="alignment",
+        ),
+    ],
+
+    # -----------------------------------------------------------------------
+    SymptomType.SLOW_CORNER_EXIT: [
+        SuggestionEntry(
+            title="Reduce LSD power ramp to encourage earlier throttle",
+            detail="Lower the on-power differential lock setting. If exit oversteer or "
+                   "snap is causing the driver to hesitate on throttle application, a "
+                   "less aggressive power ramp makes the exit more predictable and "
+                   "encourages earlier, more confident acceleration.",
+            priority=1,
+            category="differential",
+        ),
+        SuggestionEntry(
+            title="Soften rear anti-roll bar",
+            detail="Reduce rear ARB 2–3 clicks. A stiff rear ARB can cause the rear to "
+                   "snap abruptly when the car is unwinding from a corner and throttle "
+                   "is applied. A softer setting produces a more gradual, predictable "
+                   "weight transfer that encourages the driver to open the throttle "
+                   "earlier.",
+            priority=2,
+            category="suspension",
+        ),
+        SuggestionEntry(
+            title="Check rear tyre temperatures",
+            detail="Cold or inconsistently heated rear tyres feel skittish under "
+                   "acceleration, causing drivers to back off instinctively. Verify "
+                   "rear tread temperatures are in the working window (60–105 °C) by "
+                   "the time you reach corner exits.",
+            priority=3,
+            category="tyres",
+        ),
+        SuggestionEntry(
+            title="Increase rear ride height slightly",
+            detail="Raise rear ride height 2–3 mm. If the rear is bottoming or the "
+                   "suspension is topping out under acceleration squat, it creates "
+                   "an unsettled feeling that deters early throttle. More rear travel "
+                   "gives the suspension room to absorb the squat progressively.",
+            priority=4,
+            category="suspension",
+        ),
+    ],
 }
 
 
