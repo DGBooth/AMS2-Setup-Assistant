@@ -213,8 +213,8 @@ class OverlayWindow(QMainWindow):
         )
         if snapshot.vehicle_info.mCarName:
             self._car_label.setText(snapshot.vehicle_info.mCarName)
-        # Forward last_lap_time so the fuel tab can auto-fill the lap timer
-        self._fuel_panel.update_snapshot(snapshot.last_lap_time)
+        # Forward lap timing and fuel level to the fuel calculator
+        self._fuel_panel.update_snapshot(snapshot.last_lap_time, snapshot.fuel_litres)
 
     @pyqtSlot(list)
     def update_symptoms(self, symptoms: list[Symptom]):
