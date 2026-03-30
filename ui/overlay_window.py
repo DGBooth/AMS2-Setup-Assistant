@@ -28,7 +28,7 @@ from ui.symptom_panel import SymptomPanel
 from ui.suggestion_panel import SuggestionPanel
 from ui.fuel_calculator import FuelCalculatorPanel
 from ui.technique_panel import TechniquePanel
-from analysis.corner_analyzer import CornerReport
+from analysis.lap_recorder import LapData, LapSample
 from analysis.signal_smoother import SmoothedSignals
 
 
@@ -213,14 +213,14 @@ class OverlayWindow(QMainWindow):
     def update_symptoms(self, symptoms: list[Symptom]):
         self._symptom_panel.update_symptoms(symptoms)
 
-    @pyqtSlot(object)
-    def add_corner_report(self, report: CornerReport):
-        """Add a completed corner coaching report to the technique panel."""
-        self._technique_panel.add_corner_report(report)
-
-    def clear_technique_history(self):
-        """Clear corner history on garage exit."""
-        self._technique_panel.clear()
+    def update_lap_comparison(
+        self,
+        ref_lap: "LapData | None",
+        cur_samples: list,
+        snapshot: TelemetrySnapshot,
+    ) -> None:
+        """Forward lap comparison data to the technique panel."""
+        self._technique_panel.update_lap_comparison(ref_lap, cur_samples, snapshot)
 
     @pyqtSlot(object, list)
     def show_suggestions(self, symptom: Symptom, suggestions: list[SuggestionEntry]):
