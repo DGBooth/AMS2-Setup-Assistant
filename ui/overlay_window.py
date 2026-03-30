@@ -22,18 +22,14 @@ from config import (
     OVERLAY_HEIGHT, OVERLAY_OPACITY, OVERLAY_WIDTH,
 )
 from data_layer.data_models import TelemetrySnapshot
-from analysis.symptom_detector import Symptom, SymptomType
+from analysis.symptom_detector import Symptom
 from analysis.suggestion_table import SuggestionEntry
 from ui.symptom_panel import SymptomPanel
 from ui.suggestion_panel import SuggestionPanel
 from ui.fuel_calculator import FuelCalculatorPanel
-
-# Symptom types that belong on the Technique tab rather than the Setup tab
-_TECHNIQUE_SYMPTOM_TYPES = frozenset({
-    SymptomType.LATE_BRAKING,
-    SymptomType.EARLY_THROTTLE,
-    SymptomType.SLOW_CORNER_EXIT,
-})
+from ui.technique_panel import TechniquePanel
+from analysis.corner_analyzer import CornerReport
+from analysis.signal_smoother import SmoothedSignals
 
 
 class _ResizeGrip(QSizeGrip):
@@ -130,15 +126,8 @@ class OverlayWindow(QMainWindow):
         tabs.addTab(setup_tab, "SETUP")
 
         # --- Technique tab ---
-        technique_tab = QWidget()
-        technique_layout = QVBoxLayout(technique_tab)
-        technique_layout.setContentsMargins(0, 0, 0, 0)
-        technique_layout.setSpacing(0)
-        self._technique_panel = SymptomPanel(title="CORNER TECHNIQUE")
-        self._technique_suggestion_panel = SuggestionPanel()
-        technique_layout.addWidget(self._technique_panel)
-        technique_layout.addWidget(self._technique_suggestion_panel)
-        tabs.addTab(technique_tab, "TECHNIQUE")
+        self._technique_panel = TechniquePanel()
+        tabs.addTab(self._technique_panel, "TECHNIQUE")
 
         # --- Fuel tab ---
         self._fuel_panel = FuelCalculatorPanel()
@@ -151,9 +140,8 @@ class OverlayWindow(QMainWindow):
         grip.setFixedSize(16, 16)
         root_layout.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
 
-        # Connect symptom selection → suggestion update for each tab
+        # Connect symptom selection → suggestion update for setup tab
         self._symptom_panel.symptom_selected.connect(self._on_symptom_selected)
-        self._technique_panel.symptom_selected.connect(self._on_technique_symptom_selected)
 
     def _build_header(self) -> QWidget:
         bar = QFrame()
@@ -216,12 +204,23 @@ class OverlayWindow(QMainWindow):
         # Forward lap timing and fuel level to the fuel calculator
         self._fuel_panel.update_snapshot(snapshot.last_lap_time, snapshot.fuel_litres)
 
+    @pyqtSlot(object)
+    def update_telemetry(self, signals: SmoothedSignals):
+        """Forward smoothed signals to the technique panel for live input bars."""
+        self._technique_panel.update_telemetry(signals)
+
     @pyqtSlot(list)
     def update_symptoms(self, symptoms: list[Symptom]):
-        setup_symptoms = [s for s in symptoms if s.symptom_type not in _TECHNIQUE_SYMPTOM_TYPES]
-        technique_symptoms = [s for s in symptoms if s.symptom_type in _TECHNIQUE_SYMPTOM_TYPES]
-        self._symptom_panel.update_symptoms(setup_symptoms)
-        self._technique_panel.update_symptoms(technique_symptoms)
+        self._symptom_panel.update_symptoms(symptoms)
+
+    @pyqtSlot(object)
+    def add_corner_report(self, report: CornerReport):
+        """Add a completed corner coaching report to the technique panel."""
+        self._technique_panel.add_corner_report(report)
+
+    def clear_technique_history(self):
+        """Clear corner history on garage exit."""
+        self._technique_panel.clear()
 
     @pyqtSlot(object, list)
     def show_suggestions(self, symptom: Symptom, suggestions: list[SuggestionEntry]):
@@ -309,13 +308,6 @@ class OverlayWindow(QMainWindow):
         from config import MAX_SUGGESTIONS_SHOWN
         suggestions = get_suggestions(symptom, MAX_SUGGESTIONS_SHOWN)
         self._suggestion_panel.show_suggestions(symptom, suggestions)
-
-    @pyqtSlot(object)
-    def _on_technique_symptom_selected(self, symptom: Symptom):
-        from analysis.suggestion_table import get_suggestions
-        from config import MAX_SUGGESTIONS_SHOWN
-        suggestions = get_suggestions(symptom, MAX_SUGGESTIONS_SHOWN)
-        self._technique_suggestion_panel.show_suggestions(symptom, suggestions)
 
     # ------------------------------------------------------------------
     # Paint translucent background
