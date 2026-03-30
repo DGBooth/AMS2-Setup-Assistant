@@ -1,22 +1,23 @@
 """
-Technique tab — live input readout and per-corner coaching feedback.
+Technique tab — live input readout and lap-vs-reference trace chart.
 
 Shows:
   • Live throttle, brake, and steering bars updated every poll cycle
-  • A scrollable list of per-corner coaching summaries, newest first
-
-No setup suggestions — this is purely about driving technique.
+  • A mini chart comparing throttle and brake traces of the current lap
+    against the session's fastest reference lap, aligned by track distance
 """
 from __future__ import annotations
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
 from PyQt5.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QProgressBar, QScrollArea,
+    QFrame, QHBoxLayout, QLabel, QProgressBar,
     QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from analysis.corner_analyzer import CornerReport
+from analysis.lap_recorder import LapData, LapSample
 from analysis.signal_smoother import SmoothedSignals
+from data_layer.data_models import TelemetrySnapshot
 
 
 class _InputBar(QWidget):
@@ -69,57 +70,137 @@ class _InputBar(QWidget):
             self._pct_label.setText(f"{clamped:.0%}")
 
 
-class _CornerCard(QFrame):
-    """Coaching card for a single completed corner."""
+class _LapTraceChart(QWidget):
+    """
+    Mini chart showing throttle and brake traces aligned by track distance.
 
-    _COLOR_CLEAN = "#44ff88"
-    _COLOR_ISSUE = "#ffaa00"
+    Reference lap (fastest this session) drawn as faded lines.
+    Current in-progress lap drawn as bright lines.
+    A vertical cursor marks the car's current position on track.
+    """
 
-    def __init__(self, report: CornerReport, index: int, parent=None):
+    _BUCKETS = 250  # distance bins — ~17 m each on a 4.3 km track
+
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("cornerCard")
-        color = self._COLOR_ISSUE if report.had_issues else self._COLOR_CLEAN
-        self.setStyleSheet(
-            f"#cornerCard {{ background: rgba(30,30,45,160); border-radius: 3px; "
-            f"border-left: 3px solid {color}; margin: 2px 4px; }}"
-        )
+        self.setMinimumHeight(82)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._ref_throttle: list[float | None] = []
+        self._ref_brake: list[float | None] = []
+        self._cur_throttle: list[float | None] = []
+        self._cur_brake: list[float | None] = []
+        self._cur_pos_frac: float = 0.0
+        self._has_ref: bool = False
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 5, 8, 5)
-        layout.setSpacing(3)
+    def update_data(
+        self,
+        ref_lap: LapData | None,
+        cur_samples: list[LapSample],
+        cur_distance: float,
+        track_length: float,
+    ) -> None:
+        self._has_ref = ref_lap is not None
+        if track_length > 0:
+            self._ref_throttle, self._ref_brake = self._bucket(
+                ref_lap.samples if ref_lap else [], track_length
+            )
+            self._cur_throttle, self._cur_brake = self._bucket(cur_samples, track_length)
+            self._cur_pos_frac = (
+                max(0.0, min(1.0, cur_distance / track_length))
+                if cur_distance >= 0 else 0.0
+            )
+        self.update()
 
-        # Header
-        corner_label = "Last corner" if index == 0 else f"{index + 1} corners ago"
-        header_text = (
-            f"{corner_label}  ·  Peak {report.peak_lat_g:.2f}g  ·  "
-            f"{report.min_speed_kph:.0f}–{report.max_speed_kph:.0f} kph"
-        )
-        header = QLabel(header_text)
-        header.setStyleSheet(f"font-weight: bold; font-size: 10px; color: {color};")
-        layout.addWidget(header)
+    @classmethod
+    def _bucket(
+        cls, samples: list[LapSample], track_length: float
+    ) -> tuple[list[float | None], list[float | None]]:
+        n = cls._BUCKETS
+        t_acc: list[list[float]] = [[] for _ in range(n)]
+        b_acc: list[list[float]] = [[] for _ in range(n)]
+        for s in samples:
+            idx = min(int(s.distance / track_length * n), n - 1)
+            t_acc[idx].append(s.throttle)
+            b_acc[idx].append(s.brake)
+        throttle = [sum(lst) / len(lst) if lst else None for lst in t_acc]
+        brake    = [sum(lst) / len(lst) if lst else None for lst in b_acc]
+        return throttle, brake
 
-        if report.had_issues:
-            for issue in report.issues:
-                row = QLabel(f"• {issue}")
-                row.setWordWrap(True)
-                row.setStyleSheet("color: #cccccc; font-size: 10px; padding-left: 2px;")
-                layout.addWidget(row)
-        else:
-            ok = QLabel("Clean corner — good technique")
-            ok.setStyleSheet(f"color: {self._COLOR_CLEAN}; font-size: 10px;")
-            layout.addWidget(ok)
+    def paintEvent(self, event):  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w, h = self.width(), self.height()
+        pad = 4
+        cw = w - 2 * pad
+        ch = h - 2 * pad
+
+        # Background
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(18, 18, 28))
+        painter.drawRoundedRect(0, 0, w, h, 3, 3)
+
+        if not self._has_ref:
+            f = painter.font()
+            f.setPixelSize(10)
+            painter.setFont(f)
+            painter.setPen(QColor(70, 70, 100))
+            painter.drawText(pad, pad, cw, ch, Qt.AlignCenter,
+                             "Complete a lap to set reference")
+            painter.end()
+            return
+
+        n = self._BUCKETS
+        bw = cw / n
+
+        def draw_trace(values, r, g, b, alpha, line_width):
+            if not any(v is not None for v in values):
+                return
+            pen = QPen(QColor(r, g, b, alpha))
+            pen.setWidthF(line_width)
+            pen.setCapStyle(Qt.RoundCap)
+            painter.setPen(pen)
+            path = QPainterPath()
+            started = False
+            for i, v in enumerate(values):
+                if v is None:
+                    started = False
+                    continue
+                x = pad + (i + 0.5) * bw
+                y = pad + ch * (1.0 - v)
+                if not started:
+                    path.moveTo(x, y)
+                    started = True
+                else:
+                    path.lineTo(x, y)
+            painter.drawPath(path)
+
+        # Reference traces — faded
+        draw_trace(self._ref_throttle,  68, 204, 102,  75, 1.0)
+        draw_trace(self._ref_brake,    255,  85,  85,  75, 1.0)
+
+        # Current lap traces — bright
+        draw_trace(self._cur_throttle,  68, 204, 102, 220, 1.5)
+        draw_trace(self._cur_brake,    255,  85,  85, 220, 1.5)
+
+        # Current position cursor
+        if self._cur_pos_frac > 0:
+            x = int(pad + self._cur_pos_frac * cw)
+            pen = QPen(QColor(255, 255, 255, 100))
+            pen.setWidthF(1.0)
+            painter.setPen(pen)
+            painter.drawLine(x, pad, x, pad + ch)
+
+        painter.end()
 
 
 class TechniquePanel(QWidget):
     """
-    Live driver input bars and scrollable per-corner coaching history.
+    Live driver input bars and lap-vs-reference trace chart.
     """
-
-    _MAX_CORNERS = 5
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._reports: list[CornerReport] = []
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -155,37 +236,43 @@ class TechniquePanel(QWidget):
         divider.setStyleSheet("color: rgba(80,80,120,100);")
         layout.addWidget(divider)
 
-        # ── Corner analysis ───────────────────────────────────────────────
-        history_header = QLabel("CORNER ANALYSIS")
-        history_header.setObjectName("sectionHeader")
-        history_header.setStyleSheet(
-            "color: #888888; font-size: 10px; font-weight: bold; "
-            "letter-spacing: 1px; padding: 6px 8px 2px 8px;"
+        # ── Lap comparison ────────────────────────────────────────────────
+        comp_header_row = QWidget()
+        comp_header_layout = QHBoxLayout(comp_header_row)
+        comp_header_layout.setContentsMargins(8, 6, 8, 2)
+        comp_header_layout.setSpacing(6)
+
+        comp_title = QLabel("LAP COMPARISON")
+        comp_title.setObjectName("sectionHeader")
+        comp_title.setStyleSheet(
+            "color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px;"
         )
-        layout.addWidget(history_header)
+        comp_header_layout.addWidget(comp_title)
+        comp_header_layout.addStretch()
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setFrameShape(QFrame.NoFrame)
+        self._ref_label = QLabel("Complete a lap to set reference")
+        self._ref_label.setStyleSheet("color: #555577; font-size: 10px;")
+        comp_header_layout.addWidget(self._ref_label)
 
-        self._history_widget = QWidget()
-        self._history_layout = QVBoxLayout(self._history_widget)
-        self._history_layout.setContentsMargins(0, 2, 0, 2)
-        self._history_layout.setSpacing(2)
-        self._history_layout.addStretch()
+        layout.addWidget(comp_header_row)
 
-        scroll.setWidget(self._history_widget)
-        layout.addWidget(scroll, 1)
+        # Legend
+        legend = QLabel(
+            "<span style='color:#44cc66;'>━</span> Throttle &nbsp;"
+            "<span style='color:#ff5555;'>━</span> Brake &nbsp;"
+            "<span style='color:rgba(68,204,102,80);'>─ ─</span> Reference"
+        )
+        legend.setTextFormat(Qt.RichText)
+        legend.setStyleSheet("color: #666688; font-size: 9px; padding: 0 8px 2px 8px;")
+        layout.addWidget(legend)
 
-        self._empty_label = QLabel("Waiting for corner data…")
-        self._empty_label.setAlignment(Qt.AlignCenter)
-        self._empty_label.setStyleSheet("color: #444466; font-size: 11px; padding: 12px;")
-        layout.addWidget(self._empty_label)
-
-        self._scroll_area = scroll
-        self._refresh_visibility()
+        # Chart
+        chart_box = QWidget()
+        chart_layout = QVBoxLayout(chart_box)
+        chart_layout.setContentsMargins(8, 2, 8, 8)
+        self._chart = _LapTraceChart()
+        chart_layout.addWidget(self._chart)
+        layout.addWidget(chart_box, 1)
 
     # ------------------------------------------------------------------
     # Public update API
@@ -197,35 +284,25 @@ class TechniquePanel(QWidget):
         self._brake_bar.set_value(sig.unfiltered_brake)
         self._steering_bar.set_value(sig.unfiltered_steering)
 
-    def add_corner_report(self, report: CornerReport) -> None:
-        """Add a new corner report to the top of the history list."""
-        self._reports.insert(0, report)
-        if len(self._reports) > self._MAX_CORNERS:
-            self._reports = self._reports[:self._MAX_CORNERS]
-        self._rebuild_history()
+    def update_lap_comparison(
+        self,
+        ref_lap: LapData | None,
+        cur_samples: list[LapSample],
+        snapshot: TelemetrySnapshot,
+    ) -> None:
+        """Called every poll cycle to update the lap trace chart."""
+        track_length = snapshot.event_info.mTrackLength
+        cur_distance = snapshot.lap_distance
 
-    def clear(self) -> None:
-        """Clear all corner history (e.g. on garage exit)."""
-        self._reports.clear()
-        self._rebuild_history()
+        # Update reference label
+        if ref_lap is not None:
+            t = ref_lap.lap_time
+            mins = int(t // 60)
+            secs = t % 60
+            self._ref_label.setText(f"Best: {mins}:{secs:06.3f}")
+            self._ref_label.setStyleSheet("color: #44cc66; font-size: 10px;")
+        else:
+            self._ref_label.setText("Complete a lap to set reference")
+            self._ref_label.setStyleSheet("color: #555577; font-size: 10px;")
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
-
-    def _rebuild_history(self) -> None:
-        while self._history_layout.count() > 1:
-            item = self._history_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        for i, report in enumerate(self._reports):
-            card = _CornerCard(report, i)
-            self._history_layout.insertWidget(self._history_layout.count() - 1, card)
-
-        self._refresh_visibility()
-
-    def _refresh_visibility(self) -> None:
-        has_data = bool(self._reports)
-        self._scroll_area.setVisible(has_data)
-        self._empty_label.setVisible(not has_data)
+        self._chart.update_data(ref_lap, cur_samples, cur_distance, track_length)

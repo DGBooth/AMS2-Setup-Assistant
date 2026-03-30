@@ -96,6 +96,7 @@ class TelemetrySnapshot:
     game_running: bool = False          # False when CREST2 is unreachable
     current_lap_time: float = -1.0     # seconds; -1 = not on a timed lap (pre-start-line)
     last_lap_time: float = -1.0        # seconds; -1 = no lap completed yet this session
+    lap_distance: float = -1.0         # metres into the current lap; -1 = not on a timed lap
 
     @property
     def fuel_litres(self) -> float:
@@ -180,11 +181,12 @@ def parse_vehicle_information(data: dict) -> VehicleInformation:
 
 
 def parse_timings(data: dict) -> dict:
-    """Returns current and last lap time from the timings section."""
+    """Returns current lap time, last lap time, and lap distance from the timings section."""
     t = data.get("timings", data)
     return {
         "current_lap_time": float(t.get("mCurrentTime", -1)),
         "last_lap_time":    float(t.get("mLastLapTime", -1)),
+        "lap_distance":     float(t.get("mLapDistance", -1)),
     }
 
 
