@@ -40,6 +40,12 @@ def _context_summary(symptom: Symptom) -> str:
         parts.append(f"ΔT {ctx['brake_temp_delta_c']:.0f} °C L/R")
     if "min_ride_height_mm" in ctx:
         parts.append(f"{ctx['min_ride_height_mm']:.0f} mm clearance")
+    if "brake_input" in ctx:
+        parts.append(f"brake {ctx['brake_input']:.0%}")
+    if "lateral_g" in ctx:
+        parts.append(f"{abs(ctx['lateral_g']):.1f}g lat")
+    if "peak_lateral_g" in ctx:
+        parts.append(f"peak {ctx['peak_lateral_g']:.1f}g")
     return "  ·  ".join(parts)
 
 
@@ -90,7 +96,7 @@ class _SymptomItem(QFrame):
 class SymptomPanel(QWidget):
     symptom_selected = pyqtSignal(object)  # Symptom
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, title: str = "ACTIVE SYMPTOMS"):
         super().__init__(parent)
         self._current_symptoms: list[Symptom] = []
         self._selected_type: SymptomType | None = None
@@ -100,7 +106,7 @@ class SymptomPanel(QWidget):
         outer.setSpacing(0)
 
         # Section header
-        header = QLabel("ACTIVE SYMPTOMS")
+        header = QLabel(title)
         header.setObjectName("sectionHeader")
         header.setStyleSheet(
             "color: #888888; font-size: 10px; font-weight: bold; "
