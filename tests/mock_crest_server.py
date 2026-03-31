@@ -80,6 +80,11 @@ def _base():
             "mTrackLength": 4309.0,
             "mSessionFastestLapTime": 68.4,
         },
+        "timings": {
+            "mCurrentTime": 32.5,
+            "mLastLapTime": -1.0,
+            "mLapDistance": 1200.0,
+        },
     }
 
 
@@ -217,6 +222,7 @@ def api():
         "unfilteredInputs":  "unfilteredInputs",
         "vehicleInformation":"vehicleInformation",
         "eventInformation":  "eventInformation",
+        "timings":           "timings",
     }
 
     for param, key in param_map.items():

@@ -120,6 +120,7 @@ class CRESTClient(QObject):
             game_running=True,
             current_lap_time=timings["current_lap_time"],
             last_lap_time=timings["last_lap_time"],
+            lap_distance=timings["lap_distance"],
         )
         self.data_ready.emit(snapshot)
 
