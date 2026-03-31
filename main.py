@@ -20,7 +20,9 @@ from data_layer.crest_client import CRESTClient
 from data_layer.data_models import TelemetrySnapshot
 from analysis.signal_smoother import SignalSmoother, SmoothedSignals
 from analysis.symptom_detector import SymptomDetector, Symptom, Severity, SymptomType
-from analysis.corner_analyzer import CornerAnalyzer, PURE_TECHNIQUE_TYPES
+from analysis.corner_analyzer import PURE_TECHNIQUE_TYPES
+from analysis.lap_recorder import LapRecorder
+
 from analysis.suggestion_table import get_suggestions
 from ui.overlay_window import OverlayWindow
 
@@ -66,7 +68,7 @@ class App(QObject):
         self._debug = debug
         self._smoother = SignalSmoother()
         self._detector = SymptomDetector()
-        self._corner_analyzer = CornerAnalyzer()
+        self._lap_recorder = LapRecorder()
         self._last_snapshot: TelemetrySnapshot | None = None
 
         # Run / lap state
@@ -112,13 +114,16 @@ class App(QObject):
             if self._debug and symptoms:
                 print(f"[DBG] >>> SYMPTOMS: {[s.symptom_type.name for s in symptoms]}")
 
-            # Route pure-technique symptoms to the corner analyzer only
+            # Filter pure-technique symptoms from the setup tab
             setup_symptoms = [s for s in symptoms if s.symptom_type not in PURE_TECHNIQUE_TYPES]
             self._accumulate_symptoms(setup_symptoms)
 
-            report = self._corner_analyzer.update(signals, symptoms)
-            if report:
-                self._window.add_corner_report(report)
+        self._lap_recorder.update(snapshot)
+        self._window.update_lap_comparison(
+            self._lap_recorder.reference_lap,
+            self._lap_recorder.current_samples,
+            snapshot,
+        )
 
         self._window.update_symptoms(list(self._persisted_symptoms.values()))
 
@@ -130,7 +135,7 @@ class App(QObject):
             if self._stationary_samples >= self._GARAGE_STATIONARY_SAMPLES:
                 # Transitioned from garage → track: clear previous run's data
                 self._persisted_symptoms.clear()
-                self._window.clear_technique_history()
+                self._lap_recorder.clear()
                 self._run_started = False
                 if self._debug:
                     print("[DBG] Garage exit detected — symptom log cleared")
