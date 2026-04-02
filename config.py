@@ -51,10 +51,43 @@ BRAKE_INPUT_MIN               = 0.55   # driver must be braking meaningfully
 BRAKE_TEMP_ASYMMETRY_C        = 40.0   # L/R brake temp difference → instability
 
 # Tyre temperatures (Kelvin — CREST reports Kelvin)
+# Default window — used when the car class is not in TYRE_WINDOW_BY_CLASS
 TYRE_OPTIMAL_LOW_K            = 333.15  # 60 °C  — below → undertemp
 TYRE_OPTIMAL_HIGH_K           = 378.15  # 105 °C — above → overtemp (warning)
 TYRE_OVERHEAT_K               = 388.15  # 115 °C — above → overheating (critical)
 TYRE_UNDERTEMP_SUSTAINED      = 3       # consecutive samples below threshold to flag
+
+# Per-class tyre temperature windows.
+# Keys are lowercase substrings matched against mCarClassName (case-insensitive).
+# Values are (optimal_low_°C, optimal_high_°C, overheat_°C).
+# The first matching key wins, so list more-specific entries first.
+_TYRE_WINDOW_BY_CLASS_C: dict[str, tuple[float, float, float]] = {
+    "vintage":  (45.0,  80.0, 95.0),   # Formula Vintage, Group C Vintage, etc.
+    "classic":  (50.0,  85.0, 100.0),  # Formula Classic, Classic GT
+    "grupo a":  (55.0,  90.0, 105.0),  # Grupo A (touring, bias-ply)
+    "copa truck": (60.0, 95.0, 110.0),
+    "stock car": (60.0, 95.0, 110.0),
+    "gt4":      (65.0, 100.0, 115.0),
+    "gt3":      (70.0, 105.0, 120.0),
+    "lmp":      (75.0, 110.0, 125.0),
+    "formula":  (70.0, 105.0, 120.0),  # modern Formula (catch-all — must come after vintage/classic)
+}
+
+_KELVIN_OFFSET = 273.15
+
+
+def get_tyre_window_k(car_class: str) -> tuple[float, float, float]:
+    """Return (optimal_low_K, optimal_high_K, overheat_K) for *car_class*.
+
+    Matches the first key in ``_TYRE_WINDOW_BY_CLASS_C`` that appears as a
+    case-insensitive substring of *car_class*.  Falls back to the global
+    defaults if no match is found.
+    """
+    lower = car_class.lower()
+    for keyword, (lo_c, hi_c, oh_c) in _TYRE_WINDOW_BY_CLASS_C.items():
+        if keyword in lower:
+            return (lo_c + _KELVIN_OFFSET, hi_c + _KELVIN_OFFSET, oh_c + _KELVIN_OFFSET)
+    return (TYRE_OPTIMAL_LOW_K, TYRE_OPTIMAL_HIGH_K, TYRE_OVERHEAT_K)
 
 # Wheel lock (brake lock-up without ABS)
 WHEEL_LOCK_BRAKE_MIN          = 0.30   # minimum brake input before checking for lock

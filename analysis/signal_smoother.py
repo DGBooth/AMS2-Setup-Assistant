@@ -53,6 +53,9 @@ class SmoothedSignals:
     tc_active: bool = False
     game_running: bool = False
 
+    # ---- Vehicle identity (most-recent sample, not averaged) ----
+    car_class: str = ""                 # mCarClassName from CREST2 — used for per-class thresholds
+
     # ---- Derived convenience ----
     @property
     def rear_spin_delta(self) -> float:
@@ -152,4 +155,5 @@ class SignalSmoother:
             abs_setting=latest.car_state.mAntiLockSetting,
             tc_active=latest.car_state.mTractionControlActive,
             game_running=latest.game_running,
+            car_class=latest.vehicle_info.mCarClassName,
         )
