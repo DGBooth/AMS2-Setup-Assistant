@@ -43,6 +43,7 @@ from config import (
     TYRE_OPTIMAL_HIGH_K,
     TYRE_OPTIMAL_LOW_K,
     TYRE_OVERHEAT_K,
+    get_tyre_window_k,
     UNDERSTEER_LATERAL_G_LOW,
     UNDERSTEER_STEERING_THRESHOLD,
     UNDERSTEER_YAW_DEFICIT_RATIO,
@@ -362,18 +363,20 @@ class SymptomDetector:
         overheating_wheels = []
         undertemp_wheels   = []
 
+        low_k, high_k, overheat_k = get_tyre_window_k(sig.car_class)
+
         for i, label in [(FL, "FL"), (FR, "FR"), (RL, "RL"), (RR, "RR")]:
             temp = sig.tyre_tread_temp_k[i]
-            if temp > TYRE_OVERHEAT_K:
+            if temp > overheat_k:
                 overheating_wheels.append((label, temp))
-            elif temp > TYRE_OPTIMAL_HIGH_K:
+            elif temp > high_k:
                 overheating_wheels.append((label, temp))  # still flag as warning
-            elif temp < TYRE_OPTIMAL_LOW_K and sig.speed_kph > MIN_SPEED_CORNER_KPH:
+            elif temp < low_k and sig.speed_kph > MIN_SPEED_CORNER_KPH:
                 undertemp_wheels.append((label, temp))
 
         if overheating_wheels:
             max_temp = max(t for _, t in overheating_wheels)
-            sev = Severity.HIGH if max_temp > TYRE_OVERHEAT_K else Severity.MEDIUM
+            sev = Severity.HIGH if max_temp > overheat_k else Severity.MEDIUM
             results.append(Symptom(
                 symptom_type=SymptomType.TYRE_OVERHEATING,
                 severity=sev,
