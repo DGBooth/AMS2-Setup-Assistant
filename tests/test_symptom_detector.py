@@ -33,6 +33,7 @@ def _base_signals(**overrides) -> SmoothedSignals:
         abs_active=False,
         tc_active=False,
         game_running=True,
+        car_class="",
     )
     defaults.update(overrides)
     return SmoothedSignals(**defaults)
@@ -215,6 +216,45 @@ def test_tyre_undertemp_not_at_pit_speed(detector):
     symptoms = detector.detect(sig)
     types = [s.symptom_type for s in symptoms]
     assert SymptomType.TYRE_UNDERTEMP not in types
+
+
+def test_vintage_class_lower_window_flags_undertemp(detector):
+    # 55 °C (328.15 K) is above the default 60 °C threshold but below the
+    # vintage window low of 45 °C — so it should NOT fire for vintage.
+    # Use 40 °C (313.15 K) which is below the 45 °C vintage low.
+    sig = _base_signals(
+        speed_kph=80.0,
+        car_class="Formula Vintage",
+        tyre_tread_temp_k=[313.15]*4,  # 40 °C — below vintage low of 45 °C
+    )
+    symptoms = detector.detect(sig)
+    types = [s.symptom_type for s in symptoms]
+    assert SymptomType.TYRE_UNDERTEMP in types
+
+
+def test_vintage_class_55c_not_undertemp(detector):
+    # 55 °C sits inside the vintage window (45–80 °C) so should NOT flag.
+    sig = _base_signals(
+        speed_kph=80.0,
+        car_class="Formula Vintage",
+        tyre_tread_temp_k=[328.15]*4,  # 55 °C
+    )
+    symptoms = detector.detect(sig)
+    types = [s.symptom_type for s in symptoms]
+    assert SymptomType.TYRE_UNDERTEMP not in types
+
+
+def test_default_class_55c_flags_undertemp(detector):
+    # 55 °C is below the default 60 °C threshold, so with no car class set
+    # it should still flag undertemp.
+    sig = _base_signals(
+        speed_kph=80.0,
+        car_class="",
+        tyre_tread_temp_k=[328.15]*4,  # 55 °C
+    )
+    symptoms = detector.detect(sig)
+    types = [s.symptom_type for s in symptoms]
+    assert SymptomType.TYRE_UNDERTEMP in types
 
 
 # ---------------------------------------------------------------------------
