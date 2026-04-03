@@ -6,6 +6,81 @@ A real-time setup advisor overlay for **Automobilista 2**. Reads telemetry from 
 
 ---
 
+## Getting Started (complete beginner guide)
+
+This section walks you through everything from a fresh Windows PC to a running overlay.
+
+### Step 1 — Install Git
+
+Git is the tool used to download this project.
+
+1. Go to **https://git-scm.com/download/win** and download the installer.
+2. Run the installer. The default options are fine — just click **Next** through every screen and then **Install**.
+3. When it finishes, open **Git Bash** (search for it in the Start menu) and verify it works:
+   ```
+   git --version
+   ```
+   You should see something like `git version 2.x.x`.
+
+### Step 2 — Install Python
+
+1. Go to **https://www.python.org/downloads/** and click the big **Download Python 3.x.x** button.
+2. Run the installer. **Important:** on the first screen, tick the box that says **"Add Python to PATH"** before clicking Install Now.
+3. When it finishes, open a new **Command Prompt** (search `cmd` in the Start menu) and verify:
+   ```
+   python --version
+   ```
+   You should see `Python 3.x.x`.
+
+   > If you see `python is not recognized`, you missed the "Add to PATH" tick box. Uninstall Python and re-run the installer, making sure to tick it.
+
+### Step 3 — Download this project
+
+In **Command Prompt** (or Git Bash), navigate to the folder where you want the project to live, then run:
+
+```
+git clone https://github.com/dgbooth/ams2-setup-assistant.git
+cd ams2-setup-assistant
+```
+
+This creates a folder called `ams2-setup-assistant` containing all the code.
+
+> **No idea how to navigate folders in Command Prompt?** Type `cd Desktop` to go to your Desktop, then run the commands above. The project folder will appear there.
+
+### Step 4 — Install the Python dependencies
+
+Still inside the `ams2-setup-assistant` folder, run:
+
+```
+pip install PyQt5 requests
+```
+
+This downloads and installs the libraries the overlay needs. It may take a minute.
+
+> If `pip` is not recognised, try `python -m pip install PyQt5 requests` instead.
+
+### Step 5 — Install and run CREST2
+
+CREST2 is the bridge between Automobilista 2 and this tool. It reads the game's shared memory and exposes it over a local web server.
+
+1. Download **CREST2** from **https://github.com/viper4gh/CREST2-AMS2** (click **Releases** on the right-hand side, then download `CREST2.exe`).
+2. Put `CREST2.exe` somewhere convenient (e.g. your AMS2 install folder or your Desktop).
+3. **Launch CREST2.exe** — a small console window will appear and stay open.
+4. Verify it is working: open your browser and go to **http://localhost:8180/crest2/v1/api** — you should see a page full of JSON (numbers and curly braces). If you see an error, make sure CREST2 is still running.
+
+### Step 6 — Run the overlay
+
+1. Launch **Automobilista 2** and get into any session (practice, race, etc.).
+2. In Command Prompt, make sure you are in the `ams2-setup-assistant` folder, then run:
+   ```
+   python main.py
+   ```
+3. The overlay window will appear. A **green dot** in the header means it is connected to CREST2. A red dot means CREST2 is not reachable — double-check it is running.
+
+That's it. Drive the car and handling symptoms will appear in the overlay. Click a symptom to see ranked setup suggestions.
+
+---
+
 ## Features
 
 - **Real-time symptom detection** — understeer, oversteer, traction loss, brake instability, wheel lock, tyre temperatures, suspension bottoming, and ABS calibration issues
@@ -19,11 +94,13 @@ A real-time setup advisor overlay for **Automobilista 2**. Reads telemetry from 
 
 ## Requirements
 
-- **Automobilista 2** with **CREST2** running (CREST2 is available at [CREST2](https://github.com/viper4gh/CREST2-AMS2)
+- **Automobilista 2** with **CREST2** running (see Getting Started above)
 - **Python 3.10+**
+- **Git** (to clone this repo)
 
 ### Python dependencies
 
+Core (required):
 ```
 pip install PyQt5 requests
 ```
@@ -37,19 +114,6 @@ Optional (only needed for the development mock server):
 ```
 pip install flask
 ```
-
----
-
-## Quick start
-
-1. Launch CREST2 (`CREST2.exe` in your AMS2 install folder)
-2. Launch AMS2 and get into a session
-3. Run the overlay:
-   ```
-   python main.py
-   ```
-
-Verify CREST2 is reachable by opening `http://localhost:8180/crest2/v1/api` in a browser — you should see a JSON response. The overlay will show a green dot in the header when connected.
 
 ---
 
